@@ -1,78 +1,91 @@
-name: Install Club Dynasty v20
+name: Install verified Club Dynasty v20
 
 on:
-  push:
-    paths:
-      - '.github/workflows/install-club-dynasty-v20.yml'
+  pull_request_target:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   install:
+    if: github.event.pull_request.head.ref == 'agent/install-club-dynasty-v20-verified'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out verified installer branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
 
-      - name: Rebuild verified v20 archive
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Rebuild and verify source archive
         shell: bash
         run: |
           set -euo pipefail
+          cat \
+            .v20-parts/part-01a.txt \
+            .v20-parts/part-01b.txt \
+            .v20-parts/part-02.txt \
+            .v20-parts/part-03.txt \
+            .v20-parts/part-04.txt \
+            .v20-parts/part-05.txt \
+            .v20-parts/part-06.txt \
+            .v20-parts/part-07.txt \
+            .v20-parts/part-08.txt \
+            .v20-parts/part-09.txt \
+            .v20-parts/part-10.txt \
+            .v20-parts/part-11.txt \
+            .v20-parts/part-12-01.txt \
+            .v20-parts/part-12-02.txt \
+            .v20-parts/part-12-03.txt \
+            .v20-parts/part-12-04.txt \
+            .v20-parts/part-12-05.txt \
+            .v20-parts/part-12-06.txt \
+            .v20-parts/part-12-07.txt \
+            .v20-parts/part-12-08.txt \
+            .v20-parts/part-13.txt \
+            .v20-parts/part-14.txt \
+            .v20-parts/part-15-01.txt \
+            .v20-parts/part-15-02.txt \
+            .v20-parts/part-15-03.txt \
+            .v20-parts/part-15-04.txt \
+            .v20-parts/part-15-05.txt \
+            .v20-parts/part-15-06.txt \
+            .v20-parts/part-15-07.txt \
+            .v20-parts/part-15-08.txt \
+            .v20-parts/part-16.txt \
+            .v20-parts/part-17.txt \
+            .v20-parts/part-18.txt \
+            .v20-parts/part-19.txt \
+            .v20-parts/part-20-01.txt \
+            .v20-parts/part-20-02.txt > /tmp/club-v20.b64
 
-          SHAS=(
-            88c4459c6196bb52b9fdb3578e4f19561c140d2b
-            0bc65aaf23a0a39bf9d6a37c8808fecbe9923db6
-            662a98b7371f1f7deac281ec50ace7d2320ca2a1
-            272331b9e9d0a2b22b60ab848047eb58e1427053
-            c8e747663690cc1a4005400e8904fa5fc0c9cb12
-            c0d9627af7e499faf96085ec6ed4e94a8f3d5db0
-            98cadceafae3bbe662911e186559bbeacd5c7de4
-            7584a706938d6c4ed08fc6e18e0838f9feb52af4
-            d772092e2c34b7707168514510d29479fa92b68a
-            cdb040af37ae0fd6eb627d253ea9a0bbc54b3379
-            74914a71467af79f89b3e1c016f5c9abacaf0367
-            87b0e65f53b74ab2a564a68a05b4407d9bd0b453
-            8c459977c6cfe86f01894a9938f05c03c4d52bac
-            67de11eb3c27523d3cee74bb586ccb8f5bab5e82
-            5368ae68f8d99787fd9066b5e11bf7d30378694f
-            35abcaabb41dbadbd9d76978b60f03042813d3bf
-            527a58e958831d5d206163a97ddfce18d114e185
-            fc955c3774a1ad1df3163dee82b1c786ca591890
-          )
+          echo "0f9fa0420c6eb6a68e1976850e2e95e4dbe3bab871750d4f93e2c9195b968556  /tmp/club-v20.b64" | sha256sum -c -
+          base64 --decode /tmp/club-v20.b64 > /tmp/club-v20.tar.xz
+          echo "829c41da20f87b8f6e79f741b845b5dfd2945de68f0b6a6bee90c8a75d53e1ba  /tmp/club-v20.tar.xz" | sha256sum -c -
 
-          rm -rf /tmp/club-v20 /tmp/club-v20.b64 /tmp/club-v20.tar.bz2
-          mkdir -p /tmp/club-v20
-          : > /tmp/club-v20.b64
-
-          for sha in "${SHAS[@]}"; do
-            gh api "repos/${GITHUB_REPOSITORY}/git/blobs/${sha}" --jq '.content' \
-              | tr -d '\n' \
-              | base64 --decode \
-              >> /tmp/club-v20.b64
-          done
-
-          base64 --decode /tmp/club-v20.b64 > /tmp/club-v20.tar.bz2
-          tar -xjf /tmp/club-v20.tar.bz2 -C /tmp/club-v20
-
+          mkdir /tmp/club-v20
+          tar -xJf /tmp/club-v20.tar.xz -C /tmp/club-v20
           cd /tmp/club-v20
           npm install
           npm run build
           rm -rf node_modules dist
 
-          cd "$GITHUB_WORKSPACE"
-          find . -mindepth 1 -maxdepth 1 \
-            ! -name '.git' \
-            ! -name '.github' \
-            -exec rm -rf {} +
-
+      - name: Replace temporary main branch with verified v20
+        shell: bash
+        run: |
+          set -euo pipefail
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           cp -a /tmp/club-v20/. .
           printf 'node_modules\ndist\n.env\n.DS_Store\n' > .gitignore
-          rm -f .github/workflows/install-club-dynasty-v20.yml
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git commit -m "Replace temporary build with Club Dynasty v20.0"
-          git push
+          git commit -m 'Replace temporary build with Club Dynasty v20.0'
+          git push origin HEAD:main
