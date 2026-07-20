@@ -1,22 +1,27 @@
 {
-  "name": "club-dynasty",
+  "name": "club-dynasty-v20-bootstrap",
+  "version": "20.0.0",
   "private": true,
-  "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "postinstall": "node scripts/prepare-v20.mjs",
+    "dev": "node scripts/prepare-v20.mjs && vite --host 0.0.0.0",
+    "build": "node scripts/prepare-v20.mjs && tsc && vite build",
+    "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "tar-stream": "3.1.7",
+    "xz-decompress": "0.2.3"
   },
   "devDependencies": {
-    "@types/react": "^19.2.7",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
-    "typescript": "~5.9.3",
-    "vite": "^7.2.4"
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "typescript": "5.7.3",
+    "vite": "5.4.14"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
