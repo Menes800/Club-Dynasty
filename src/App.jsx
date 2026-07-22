@@ -30,10 +30,30 @@ import {
   refreshAiTeamStories,
   weeklyTeamActivity,
 } from "./game/leagueWorld.js";
+import {
+  addLoanFromQuote,
+  addManualLoan,
+  applyExtraDebtPayment,
+  buildCashForecast,
+  calculateBorrowingCapacity,
+  getDebtSnapshot,
+  getLoanDashboard,
+  normalizeLoanBook,
+  processWeeklyDebt,
+  restructureDebtWithAdvance,
+  sumLoanBalances,
+} from "./game/financeEngine.js";
+import {
+  calculateMediaPayout,
+  getBroadcastDeals,
+  normalizeBroadcastDeal,
+} from "./game/mediaEngine.js";
 import "./App.css";
-const Mn = "sports-empire-core-v21",
-  nn = "sports-empire-core-v21-backup",
+const Mn = "sports-empire-core-v22",
+  nn = "sports-empire-core-v22-backup",
   Fa = [
+    "sports-empire-core-v21",
+    "sports-empire-core-v21-backup",
     "sports-empire-core-v20",
     "sports-empire-core-v20-backup",
     "sports-empire-core-v19",
@@ -1595,22 +1615,31 @@ function ta(e) {
       .sort((f, N) => Number(N.starter) - Number(f.starter) || H(N) - H(f)),
     k = (f, N) => {
       const w = dt(f, N, !0, e),
-        v = r - f.salary + w.salary;
-      return n - w.signingBonus < u || v > Wt({ ...e, cash: n })
+        v = n - w.signingBonus < u,
+        terms = v
+          ? { ...w, salary: Math.round(w.salary * 1.12), signingBonus: 0 }
+          : w,
+        D = r - f.salary + terms.salary;
+      return D > Wt({ ...e, cash: n })
         ? !1
-        : ((s = s.map(($) =>
-            $.id === f.id
+        : ((s = s.map((player) =>
+            player.id === f.id
               ? {
-                  ...$,
-                  contractYears: w.years,
-                  salary: w.salary,
-                  morale: b($.morale + 7, 0, 100),
+                  ...player,
+                  contractYears: terms.years,
+                  salary: terms.salary,
+                  morale: b(player.morale + 7, 0, 100),
                 }
-              : $,
+              : player,
           )),
-          (n -= w.signingBonus),
-          (r = v),
-          c.push({ name: f.name, years: w.years, bonus: w.signingBonus }),
+          (n -= terms.signingBonus),
+          (r = D),
+          c.push({
+            name: f.name,
+            years: terms.years,
+            bonus: terms.signingBonus,
+            deferred: v,
+          }),
           !0);
     };
   for (const f of g) {
@@ -1762,7 +1791,7 @@ function aa(e) {
   return (
     e.boardTrust < 30 ||
     e.cash < -12e3 ||
-    e.debt > Math.max(15e4, e.clubValue * 0.7)
+    getDebtSnapshot(e).totalDebt > Math.max(15e4, e.clubValue * 0.7)
   );
 }
 function $r(e) {
@@ -1809,7 +1838,18 @@ function $r(e) {
     n.id === "stadium" && (r = { ...r, cash: r.cash + 3e3 }),
     n.id === "transfer" && (r = { ...r, cash: r.cash + 2500 }),
     n.id === "reserve" &&
-      (r = { ...r, cash: r.cash + 4e3, debt: r.debt + 5e3 }),
+      (() => {
+        const c = addManualLoan(r, {
+          id: be("board-bridge"),
+          productId: "board",
+          label: "Styrets overgangslån",
+          cashAmount: 4e3,
+          balance: 5e3,
+          annualRate: 0.22,
+          termWeeks: 18,
+        });
+        c.ok && (r = c.game);
+      })(),
     n.id === "salary" &&
       (r = {
         ...r,
@@ -2641,12 +2681,15 @@ function Rn() {
   const e = yr(),
     s = ra(0, e.rivalName, e.region);
   return {
-    version: 21,
+    version: 22,
     phase: "setup",
     seasonStage: "regular",
     profile: e,
     cash: 15e3,
     debt: 0,
+    loans: [],
+    lastDebtPayment: void 0,
+    rescueUsedSeason: 0,
     fans: 75,
     fanGroups: { loyal: 20, casual: 38, family: 14, vip: 3 },
     fanSatisfactionScore: 70,
@@ -2710,13 +2753,8 @@ function Rn() {
     activeSponsor: ca(e),
     sponsorHistory: ["Grunnpartner ved klubbstiftelsen"],
     sponsorLedger: [],
-    tvDeal: {
-      id: "none",
-      name: "Ingen TV-avtale",
-      weeklyPay: 0,
-      audience: 0,
-      minReputation: 0,
-    },
+    tvDeal: normalizeBroadcastDeal({ id: "none" }, 0),
+    mediaLedger: [],
     boardGoals: Ft(1, 0, e.strategy, 75),
     boardPromises: [],
     boardDecisionHistory: [],
@@ -3114,10 +3152,19 @@ function dn(e) {
       d,
     ),
   );
+  const migratedLoans = normalizeLoanBook(
+    e.loans,
+    e.debt,
+    e.season ?? 1,
+  );
   let u = {
     ...s,
     ...e,
-    version: 21,
+    version: 22,
+    loans: migratedLoans,
+    debt: sumLoanBalances(migratedLoans),
+    lastDebtPayment: e.lastDebtPayment,
+    rescueUsedSeason: e.rescueUsedSeason ?? 0,
     profile: n,
     upgrades: { ...s.upgrades, ...(e.upgrades ?? {}) },
     staff: { ...s.staff, ...(e.staff ?? {}) },
@@ -3222,6 +3269,8 @@ function dn(e) {
     ),
     sponsorHistory: e.sponsorHistory ?? [],
     sponsorLedger: e.sponsorLedger ?? [],
+    tvDeal: normalizeBroadcastDeal(e.tvDeal, d),
+    mediaLedger: Array.isArray(e.mediaLedger) ? e.mediaLedger.slice(0, 80) : [],
     activeSponsor: An(e.activeSponsor, "main"),
     equipmentSponsor: An(e.equipmentSponsor, "kit"),
     boardsSponsor: An(e.boardsSponsor, "boards"),
@@ -3378,6 +3427,17 @@ function dn(e) {
       (u.leagueFeed = normalizeLeagueFeed(u.leagueFeed)),
       (u.inbox = [
         "\u{1F3C8} v21 aktiverte ekte kampdag, spillerstatistikk, karrierehistorikk og levende ligarivaler.",
+        ...u.inbox,
+      ])),
+    (e.version ?? 0) < 22 &&
+      ((u.loans = normalizeLoanBook([], u.debt, u.season)),
+      (u.debt = sumLoanBalances(u.loans)),
+      (u.tvDeal = normalizeBroadcastDeal(u.tvDeal, u.leagueIndex)),
+      (u.mediaLedger = Array.isArray(u.mediaLedger)
+        ? u.mediaLedger.slice(0, 80)
+        : []),
+      (u.inbox = [
+        "\u{1F3E6} v22 la til lånetak, tvungne avdrag, likviditetsprognose og mediebetaling med fastbeløp + CPM.",
         ...u.inbox,
       ])),
     (u = Ce(u)),
@@ -3949,36 +4009,7 @@ function On(e, s, n, r = "Klart", c = e.pricing.ticket) {
   };
 }
 function Cs(e, s, n, r) {
-  const c = 180 + e.leagueIndex * 1450,
-    i = (e.wins + (r ? 1 : 0)) * (70 + e.leagueIndex * 30),
-    d =
-      Math.log1p(Math.max(0, e.fans)) * 210 +
-      Math.log1p(Math.max(0, e.mediaReach)) * 290,
-    u =
-      [...e.roster]
-        .sort((v, $) => H($) - H(v))
-        .slice(0, 3)
-        .reduce((v, $) => v + Math.max(0, H($) - 52), 0) * 25,
-    g =
-      n?.playoff === "final"
-        ? 2.4
-        : n?.playoff
-          ? 1.75
-          : s.name === e.profile.rivalName
-            ? 1.35
-            : 1,
-    k = Math.round(
-      (4500 + e.mediaReach * 18 + e.fans * 2.4 + (s.mediaProfile ?? 50) * 280) *
-        g *
-        (1 + e.upgrades.media * 0.08 + e.upgrades.lights * 0.04),
-    ),
-    y = e.tvDeal.weeklyPay > 0 ? e.tvDeal.weeklyPay : 0,
-    f = Math.round(
-      (c + i + d + u + y) * g * (1 + e.systemInvestments.supporterCrm * 0.03),
-    ),
-    N = ([4500, 9e3, 18e3, 34e3, 58e3][e.leagueIndex] ?? 4500) * g,
-    w = Math.round(b(f, 0, N));
-  return { audience: k, revenue: w, leagueShare: c, resultShare: i };
+  return calculateMediaPayout(e, s, n, r);
 }
 function Ps(e) {
   const s = un(e),
@@ -5006,7 +5037,14 @@ function Et(e) {
     n = Ct(e) * 18e3;
   return Math.max(
     0,
-    Math.round(s + n + e.fans * 34 + e.reputation * 2200 + e.cash - e.debt),
+    Math.round(
+      s +
+        n +
+        e.fans * 34 +
+        e.reputation * 2200 +
+        e.cash -
+        getDebtSnapshot(e).totalDebt,
+    ),
   );
 }
 function wa(e, s) {
@@ -5073,7 +5111,7 @@ function wa(e, s) {
     }),
     E = Cs(n, d, i, r);
   let T = E.revenue;
-  const Y = k + y + f + N + T,
+  const Y = k + y + f + N,
     ae = [22e3, 48e3, 105e3, 21e4, 39e4][n.leagueIndex] ?? 22e3,
     B = 1 + Math.min(0.55, Math.log1p(Math.max(0, n.fans)) / 28),
     W = ae * B * (i?.playoff === "final" ? 1.7 : i?.playoff ? 1.3 : 1),
@@ -5081,12 +5119,11 @@ function wa(e, s) {
   ((k = Math.round(k * L)),
     (y = Math.round(y * L)),
     (f = Math.round(f * L)),
-    (N = Math.round(N * L)),
-    (T = Math.round(T * L)));
+    (N = Math.round(N * L)));
   const U = se(n),
     G = yt(n),
     re = In(n),
-    he = k + y + f + N + T,
+    he = k + y + f + N,
     O =
       ([22e3, 48e3, 105e3, 21e4, 39e4][n.leagueIndex] ?? 22e3) *
       (1 + Math.min(0.55, Math.log1p(Math.max(0, n.fans)) / 28)),
@@ -5094,20 +5131,13 @@ function wa(e, s) {
   ((k = Math.round(k * Q)),
     (y = Math.round(y * Q)),
     (f = Math.round(f * Q)),
-    (N = Math.round(N * Q)),
-    (T = Math.round(T * Q)));
-  const De =
-      n.stadiumLoan > 0
-        ? Math.min(
-            n.stadiumLoan,
-            Math.max(750, Math.round(n.stadiumLoan / 120)),
-          )
-        : 0,
+    (N = Math.round(N * Q)));
+  const De = processWeeklyDebt(n),
     Ae = Math.round(
       (qe(n) < 3 ? 180 : 700) + s.attendance * (qe(n) < 3 ? 0.2 : 0.35),
     ),
     Ge = k + y + f + N + v + x + T,
-    $e = U + G + re + Ae + De,
+    $e = U + G + re + Ae + De.payment,
     xe = Ge - $e,
     He = d.name === n.profile.rivalName,
     P = s.homeScore - s.awayScore,
@@ -5149,7 +5179,8 @@ function wa(e, s) {
         bn +
         (He ? 11 : 0) +
         (i?.playoff ? 18 : 0) +
-        Math.log1p(E.audience) * 0.72,
+        Math.log1p(E.audience) * 0.72 +
+        E.reachGain,
     ),
     hn = b(
       Math.round(
@@ -5274,8 +5305,10 @@ function wa(e, s) {
         sponsorBonus: x,
         salaries: U,
         staff: G,
-        maintenance: re + De,
+        maintenance: re,
         matchOps: Ae,
+        debtService: De.payment,
+        loanInterest: De.interest,
         profit: xe,
       },
       fansChange: Ye,
@@ -5289,6 +5322,7 @@ function wa(e, s) {
       waitlist: Math.max(0, s.demand - s.capacity),
       home: s.home,
       tvAudience: E.audience,
+      mediaPayout: { ...E, revenue: T },
       winProbability: s.winProbability,
       powerComparison: {
         ourPower: Math.round(Ne(n).overall),
@@ -5339,7 +5373,16 @@ function wa(e, s) {
     match: s,
     lastReport: En,
     cash: n.cash + xe,
-    stadiumLoan: Math.max(0, n.stadiumLoan - De),
+    loans: De.loans,
+    debt: De.debt,
+    stadiumLoan: De.stadiumLoan,
+    lastDebtPayment: {
+      season: n.season,
+      week: n.week,
+      total: De.payment,
+      principal: De.principal,
+      interest: De.interest,
+    },
     fans: Math.max(25, n.fans + Ye),
     fanSatisfactionScore: Ut,
     mediaReach: Math.max(50, n.mediaReach + F),
@@ -5376,6 +5419,21 @@ function wa(e, s) {
     boardsSponsor: Xt,
     stadiumSponsor: en,
     financialHistory: [...n.financialHistory, Wn].slice(-18),
+    mediaLedger: [
+      {
+        id: be("media-ledger"),
+        season: n.season,
+        week: n.week,
+        channel: E.channel,
+        format: E.format,
+        audience: E.audience,
+        cpm: E.cpm,
+        fixedFee: E.fixedFee,
+        cpmRevenue: E.cpmRevenue,
+        total: T,
+      },
+      ...(n.mediaLedger ?? []),
+    ].slice(0, 80),
     sponsorLedger: [...R, ...n.sponsorLedger].slice(0, 80),
     weeklyChallenge: {
       ...n.weeklyChallenge,
@@ -5403,7 +5461,8 @@ function wa(e, s) {
         ? `${n.profile.clubName} slo ${d.name}.`
         : `${d.name} slo ${n.profile.clubName}.`,
       St ? `${St.name} ble kampens MVP.` : "",
-      `${Z(E.audience)} fulgte kampen via TV og str\xF8mmetjenester.`,
+      `${Z(E.audience)} fulgte kampen via ${E.format.toLowerCase()}.`,
+      `${E.channel} betalte ${h(T)}: ${h(E.fixedFee)} fast + ${h(E.cpmRevenue)} fra ${E.cpm} CPM, pluss ligafordeling og eventuell resultatbonus.`,
     ])));
   const wn = [
     !vn && xt ? xt : void 0,
@@ -6001,7 +6060,7 @@ function $a(e) {
     n =
       e.boardTrust < 28 ||
       e.cash < -12e3 ||
-      e.debt > Math.max(15e4, e.clubValue * 0.7),
+      getDebtSnapshot(e).totalDebt > Math.max(15e4, e.clubValue * 0.7),
     r = Ln(e) && s >= e.nextBoardMeetingWeek,
     c = !e.boardMeeting && (r || n) ? ya({ ...e, week: s }) : e.boardMeeting;
   let i = {
@@ -6220,6 +6279,7 @@ function no() {
     xe = kt(() => se(e), [e]),
     He = kt(() => yt(e), [e]),
     P = kt(() => pe(e, xe, He), [e, xe, He]),
+    DebtState = kt(() => getDebtSnapshot(e), [e]),
     V = kt(() => un(e), [e]),
     de = kt(() => mt(e), [e]),
     te = e.phase === "match" || e.phase === "halftime",
@@ -6824,7 +6884,15 @@ function no() {
           ]);
         const S = o.target === "ownedCampus",
           M = S ? 18e4 : 0,
-          C = {
+          j = calculateBorrowingCapacity(l, {
+            income: pe(l).income,
+            operatingProfit: pe(l).operatingProfit,
+          });
+        if (S && M > j.available)
+          return A(l, [
+            `Stadionlånet på ${h(M)} er over ledig samlet låneramme på ${h(j.available)}.`,
+          ]);
+        const C = {
             ...l,
             cash: l.cash - p.moveCost,
             clubBase: o.target,
@@ -6849,10 +6917,18 @@ function no() {
       const m = Ps(l),
         p = o === "custom",
         S = Math.round(m.deposit * (p ? 1.55 : 1)),
-        M = Math.round(m.loan * (p ? 1.55 : 1));
+        M = Math.round(m.loan * (p ? 1.55 : 1)),
+        j = calculateBorrowingCapacity(l, {
+          income: pe(l).income,
+          operatingProfit: pe(l).operatingProfit,
+        });
       if (l.cash < S)
         return A(l, [
           `Egenkapitalkravet er ${h(S)}. Du mangler ${h(S - l.cash)}.`,
+        ]);
+      if (M > j.available)
+        return A(l, [
+          `Stadionlånet på ${h(M)} er over ledig samlet låneramme på ${h(j.available)}.`,
         ]);
       const C = {
         ...l,
@@ -7014,34 +7090,36 @@ function no() {
     F((m) => {
       const p = m.roster.find((z) => z.id === o);
       if (!p) return m;
-      const S = dt(p, l, !0, m);
-      if (p.contractYears > 0 && S.years <= p.contractYears)
+      const S = dt(p, l, !0, m),
+        M = m.cash < S.signingBonus,
+        C = M
+          ? { ...S, salary: Math.round(S.salary * 1.12), signingBonus: 0 }
+          : S;
+      if (p.contractYears > 0 && C.years <= p.contractYears)
         return A(m, [
           `Kontrakten til ${p.name} l\xF8per allerede i ${p.contractYears} \xE5r. Velg en lengre avtale.`,
         ]);
-      if (m.cash < S.signingBonus)
+      const j = se(m) - p.salary + C.salary,
+        I = Wt(m);
+      if (j > I)
         return A(m, [
-          `Fornyelse krever ${h(S.signingBonus)} i signeringsbonus.`,
+          `\u{1F6AB} Kontrakten g\xE5r ${h(j - I)} over klubbens tilgjengelige l\xF8nnsramme (${h(I)}/uke).`,
         ]);
-      const M = se(m) - p.salary + S.salary,
-        C = Wt(m);
-      if (M > C)
-        return A(m, [
-          `\u{1F6AB} Kontrakten g\xE5r ${h(M - C)} over klubbens tilgjengelige l\xF8nnsramme (${h(C)}/uke).`,
-        ]);
-      const j = m.roster.map((z) =>
-          z.id === o
+      const z = m.roster.map((ce) =>
+          ce.id === o
             ? {
-                ...z,
-                contractYears: S.years,
-                salary: S.salary,
-                morale: b(z.morale + 9, 0, 100),
+                ...ce,
+                contractYears: C.years,
+                salary: C.salary,
+                morale: b(ce.morale + (M ? 6 : 9), 0, 100),
               }
-            : z,
+            : ce,
         ),
-        I = Ce({ ...m, cash: m.cash - S.signingBonus, roster: j });
-      return A(I, [
-        `\u270D\uFE0F ${p.name} fornyet: ${S.years} \xE5r, ${h(S.salary)}/uke og ${h(S.signingBonus)} i bonus.`,
+        ce = Ce({ ...m, cash: m.cash - C.signingBonus, roster: z });
+      return A(ce, [
+        M
+          ? `\u270D\uFE0F ${p.name} fornyet uten signeringsbonus: ${C.years} \xE5r og ${h(C.salary)}/uke. Den høyere ukelønnen erstatter bonusen.`
+          : `\u270D\uFE0F ${p.name} fornyet: ${C.years} \xE5r, ${h(C.salary)}/uke og ${h(C.signingBonus)} i bonus.`,
       ]);
     }, "good");
   }
@@ -7089,7 +7167,7 @@ function no() {
         M = [
           `Assistenten satte beste tilgjengelige oppstilling${p ? ` og valgte ${p.name} som kaptein` : ""}.`,
           l.renewed.length
-            ? `Fornyet: ${l.renewed.map((C) => `${C.name} (${C.years} \xE5r)`).join(", ")}.`
+            ? `Fornyet: ${l.renewed.map((C) => `${C.name} (${C.years} \xE5r${C.deferred ? ", bonusfri" : ""})`).join(", ")}.`
             : "Ingen spillere m\xE5tte fornyes automatisk.",
           l.released.length
             ? `Frigitt: ${l.released.join(", ")}.`
@@ -7266,35 +7344,45 @@ function no() {
       if (!p) return m;
       if (m.roster.length >= Je)
         return A(m, [`\u{1F4CB} Troppen er full. Maks ${Je} spillere.`]);
-      const S = dt(p, l, !1, m);
-      if (m.cash < S.signingBonus)
+      const S = dt(p, l, !1, m),
+        M = m.phase === "offseason" && m.cash < S.signingBonus,
+        C = M
+          ? {
+              ...S,
+              salary: Math.round(S.salary * 1.16),
+              signingBonus: 0,
+            }
+          : S;
+      if (m.cash < C.signingBonus)
         return A(m, [
-          `\u{1F4B8} Du mangler ${h(S.signingBonus - m.cash)} til signeringsbonusen.`,
+          `\u{1F4B8} Du mangler ${h(C.signingBonus - m.cash)} til signeringsbonusen.`,
         ]);
-      const M = Wt(m);
-      if (se(m) + S.salary > M)
+      const j = Wt(m);
+      if (se(m) + C.salary > j)
         return A(m, [
-          `\u{1F6AB} Signeringen g\xE5r ${h(se(m) + S.salary - M)} over klubbens tilgjengelige l\xF8nnsramme (${h(M)}/uke).`,
+          `\u{1F6AB} Signeringen g\xE5r ${h(se(m) + C.salary - j)} over klubbens tilgjengelige l\xF8nnsramme (${h(j)}/uke).`,
         ]);
-      const C = {
+      const I = {
         ...p,
         revealed: 100,
         morale: 78,
         chemistry: 52,
-        contractYears: S.years,
-        salary: S.salary,
+        contractYears: C.years,
+        salary: C.salary,
         starter: !m.roster.some((I) => I.position === p.position && I.starter),
       };
-      let j = {
+      let z = {
         ...m,
-        cash: m.cash - S.signingBonus,
-        roster: [...m.roster, C],
+        cash: m.cash - C.signingBonus,
+        roster: [...m.roster, I],
         freeAgents: m.freeAgents.filter((I) => I.id !== o),
       };
       return (
-        (j = Ce({ ...j, clubValue: Et(j) })),
-        A(j, [
-          `\u270D\uFE0F ${p.name} signert: ${S.years} \xE5r, ${h(S.salary)}/uke og ${h(S.signingBonus)} i bonus.`,
+        (z = Ce({ ...z, clubValue: Et(z) })),
+        A(z, [
+          M
+            ? `\u270D\uFE0F ${p.name} signert uten bonus: ${C.years} år og ${h(C.salary)}/uke.`
+            : `\u270D\uFE0F ${p.name} signert: ${C.years} \xE5r, ${h(C.salary)}/uke og ${h(C.signingBonus)} i bonus.`,
         ])
       );
     }, "good");
@@ -7603,34 +7691,20 @@ function no() {
     }, "good");
   }
   function Fs(o) {
-    const l = [
-      {
-        id: "local",
-        name: "Local Sports Network",
-        weeklyPay: 900 + e.leagueIndex * 500,
-        audience: 18e3,
-        minReputation: 0,
-      },
-      {
-        id: "stream",
-        name: "StreamSport+",
-        weeklyPay: 1750 + e.leagueIndex * 900,
-        audience: 55e3,
-        minReputation: 25,
-      },
-      {
-        id: "national",
-        name: "National Prime",
-        weeklyPay: 3800 + e.leagueIndex * 1800,
-        audience: 18e4,
-        minReputation: 55,
-      },
-    ];
     F((m) => {
-      const p = l.find((S) => S.id === o);
+      const p = getBroadcastDeals(m.leagueIndex).find((S) => S.id === o);
+      if (!_t(m, "tv"))
+        return A(m, [
+          "\u{1F512} Egne TV-avtaler åpnes ved 5 000 supportere. Lokalradio og enkeltkamper betaler fortsatt fastbeløp + CPM.",
+        ]);
       return !p || m.reputation < p.minReputation
         ? A(m, ["\u{1F512} Klubben er ikke stor nok for denne TV-avtalen."])
-        : A({ ...m, tvDeal: p }, [`\u{1F4FA} Ny TV-avtale: ${p.name}.`]);
+        : A(
+            { ...m, tvDeal: p },
+            [
+              `\u{1F4FA} Ny medieavtale: ${p.name}. ${h(p.fixedFee)} fast per kamp + ${p.cpm} CPM.`,
+            ],
+          );
     }, "good");
   }
   function Io() {
@@ -7727,7 +7801,7 @@ function no() {
         m =
           o.boardTrust < 28 ||
           o.cash < -12e3 ||
-          o.debt > Math.max(15e4, o.clubValue * 0.7),
+          getDebtSnapshot(o).totalDebt > Math.max(15e4, o.clubValue * 0.7),
         p = Ln(o) && l >= o.nextBoardMeetingWeek,
         S =
           !o.boardMeeting && (p || m) ? ya({ ...o, week: l }) : o.boardMeeting;
@@ -7898,13 +7972,25 @@ function no() {
         }),
         (I = "Salary cap \xF8kte med $3.5K, men styret forventer disiplin.")),
         o === "reserve" &&
-          ((j = {
-            ...j,
-            cash: j.cash + 8e3,
-            debt: j.debt + 1e4,
-            boardTrust: b(j.boardTrust - 1, 0, 100),
-          }),
-          (I = "+$8K i likviditet, men $10K ble lagt til klubbens gjeld.")));
+          (() => {
+            const ie = addManualLoan(j, {
+              id: be("board-reserve"),
+              productId: "board",
+              label: "Styrets likviditetslån",
+              cashAmount: 8e3,
+              balance: 1e4,
+              annualRate: 0.21,
+              termWeeks: 24,
+            });
+            if (ie.ok) {
+              ((j = {
+                ...ie.game,
+                boardTrust: b(ie.game.boardTrust - 1, 0, 100),
+              }),
+                (I =
+                  "+$8K i likviditet. $10K gjeld betales automatisk ned over 24 kampuker."));
+            } else I = `Lånet ble ikke opprettet: ${ie.reason}`;
+          })());
       const z = S
           ? `${M.yes}/5 stemte for.`
           : "Grunnstyret godkjente prioriteringen.",
@@ -8418,35 +8504,128 @@ function no() {
       );
     }, "good");
   }
-  function Ys() {
-    F((o) =>
-      A(
-        {
-          ...o,
-          cash: o.cash + 25e3,
-          debt: o.debt + 31e3,
-          boardTrust: b(o.boardTrust - 4, 0, 100),
-        },
-        [
-          "\u{1F3E6} Klubben tok et krisel\xE5n p\xE5 $25K. Tilbakebetaling: $31K.",
-        ],
-      ),
-    );
+  function Ys(o = "credit") {
+    F((l) => {
+      const m = pe(l),
+        p = getLoanDashboard(l, {
+          income: m.income,
+          expenses: m.expensesBeforeDebt,
+          operatingProfit: m.operatingProfit,
+        }),
+        S = p.products.find((C) => C.id === o);
+      if (!S?.eligible)
+        return A(l, [
+          `\u{1F512} ${S?.label ?? "Lånet"} kan ikke tas: ${S?.reason ?? "ikke tilgjengelig"}`,
+        ]);
+      const M = addLoanFromQuote(l, S, be("loan"));
+      if (!M.ok) return A(l, [`\u{1F512} ${M.reason}`]);
+      const C =
+        o === "emergency"
+          ? { ...M.game, boardTrust: b(M.game.boardTrust - 4, 0, 100) }
+          : M.game;
+      return A(C, [
+        `\u{1F3E6} ${S.label}: ${h(S.amount)} utbetalt. Automatisk trekk ${h(S.weeklyPayment)}/uke i ${S.termWeeks} kampuker. Ledig låneramme etterpå: ${h(S.remainingAfter)}.`,
+      ]);
+    }, "good");
   }
-  function zs() {
-    F((o) => {
-      const l = Math.min(o.cash, o.debt, 1e4);
-      return l <= 0
-        ? o
+  function zs(o = 1e4) {
+    F((l) => {
+      const m = applyExtraDebtPayment(l, o);
+      return m.paid <= 0
+        ? l
         : A(
             {
-              ...o,
-              cash: o.cash - l,
-              debt: o.debt - l,
-              boardTrust: b(o.boardTrust + 1, 0, 100),
+              ...m.game,
+              boardTrust: b(m.game.boardTrust + 1, 0, 100),
             },
-            [`\u{1F3E6} Nedbetalte ${h(l)} gjeld.`],
+            [`\u{1F3E6} Ekstra nedbetaling: ${h(m.paid)}.`],
           );
+    }, "good");
+  }
+  function takeOffseasonRescue() {
+    F((o) => {
+      const l = pe(o),
+        m = getLoanDashboard(o, {
+          income: l.income,
+          expenses: l.expensesBeforeDebt,
+          operatingProfit: l.operatingProfit,
+        }),
+        p = m.products.find((C) => C.id === "emergency");
+      if (p?.eligible) {
+        const C = addLoanFromQuote(o, p, be("rescue-loan"));
+        return C.ok
+          ? A(
+              {
+                ...C.game,
+                boardTrust: b(C.game.boardTrust - 4, 0, 100),
+              },
+              [
+                `\u{1F6DF} Styrets nødlån ga ${h(p.amount)}. ${h(p.weeklyPayment)} trekkes automatisk hver kampuke.`,
+              ],
+            )
+          : A(o, [C.reason]);
+      }
+      const S =
+        o.cash < 0 ||
+        (l.profit < 0 && (l.runwayWeeks ?? 99) < 6) ||
+        (o.history[o.history.length - 1]?.result === "Mester" &&
+          Pr(o).some((C) => C.includes("reserve")));
+      if (!S)
+        return A(o, [
+          "Styrets redningspakke er bare tilgjengelig ved reell likviditetsfare eller en økonomisk offseason-lås.",
+        ]);
+      if (o.rescueUsedSeason === o.season)
+        return A(o, [
+          "Styrets engangstilskudd er allerede brukt denne sesongen. Reduser kostnader eller selg en spiller.",
+        ]);
+      if (m.available >= 1e3) {
+        const C = m.products.find((I) => I.eligible);
+        if (C)
+          return A(o, [
+            `Klubben har fortsatt ${h(m.available)} i ledig låneramme. ${C.label} er tilgjengelig før styret vurderer restrukturering.`,
+          ]);
+        const j = Math.min(
+            Math.floor(m.available / 1.08 / 500) * 500,
+            Math.max(2500, Math.round(l.expensesBeforeDebt - o.cash)),
+          ),
+          I = restructureDebtWithAdvance(
+            o,
+            j,
+            {
+              income: l.income,
+              expenses: l.expensesBeforeDebt,
+              operatingProfit: l.operatingProfit,
+            },
+            be("restructure"),
+          );
+        if (I.ok)
+          return A(
+            {
+              ...I.game,
+              boardTrust: b(I.game.boardTrust - 7, 0, 100),
+              rescueUsedSeason: o.season,
+            },
+            [
+              `\u{1F6DF} Styret samlet aktive klubblån og ga ${h(I.amount)} ekstra likviditet. Ny restrukturert gjeld er ${h(I.loan.balance)} med ${h(I.loan.weeklyPayment)}/uke i tvungent trekk.`,
+            ],
+          );
+      }
+      const M = Math.min(
+        12e3 + o.leagueIndex * 4e3,
+        Math.max(2500, Math.round(l.expensesBeforeDebt - o.cash)),
+      );
+      return A(
+        {
+          ...o,
+          cash: o.cash + M,
+          boardTrust: b(o.boardTrust - 12, 0, 100),
+          reputation: b(o.reputation - 2, 0, 100),
+          rescueUsedSeason: o.season,
+        },
+        [
+          `\u{1F6DF} Lånerammen var brukt opp. Styret skjøt inn ${h(M)} én gang mot -12 tillit og -2 klubbprofil. Dette er ikke ny gjeld.`,
+        ],
+      );
     }, "good");
   }
   function Js() {
@@ -8607,7 +8786,7 @@ function no() {
         offseasonFeed = createOffseasonLeagueFeed(z, j, ce),
         ie = {
           ...l,
-          version: 21,
+          version: 22,
           profile: { ...l.profile, rivalName: ce },
           phase: "club",
           seasonStage: "regular",
@@ -8629,6 +8808,7 @@ function no() {
           draftPicks: 0,
           transferOffers: [],
           boardGoals: Ft(j, S, l.profile.strategy, l.fans),
+          tvDeal: normalizeBroadcastDeal(l.tvDeal, S),
           sponsorOffers: ut(
             l.reputation,
             S,
@@ -9037,7 +9217,7 @@ function no() {
                   }),
                   a("div", {
                     className: "browser-build",
-                    children: [t("i", {}), " Club Dynasty \xB7 v21.0"],
+                    children: [t("i", {}), " Club Dynasty \xB7 v22.0"],
                   }),
                 ],
               }),
@@ -9134,7 +9314,9 @@ function no() {
                   t(fe, {
                     label: Tt(Ue, "Penger", "Cash"),
                     value: h(e.cash),
-                    detail: e.debt ? `Gjeld ${h(e.debt)}` : "Tilgjengelig",
+                    detail: DebtState.totalDebt
+                      ? `Gjeld ${h(DebtState.totalDebt)} · ${h(DebtState.weeklyPayment)}/uke`
+                      : "Gjeldfri",
                     highlight: !0,
                   }),
                   t(fe, {
@@ -9260,7 +9442,7 @@ function no() {
                                         onRenew: Xt,
                                         onRenewSponsor: La,
                                         onSell: Sn,
-                                        onTab: ke,
+                                        onTab: (o, l) => Yt(o, l),
                                       }),
                                     n === "hq" &&
                                       e.phase !== "offseason" &&
@@ -9354,6 +9536,7 @@ function no() {
                                         onTv: Fs,
                                         onLoan: Ys,
                                         onPayDebt: zs,
+                                        onRescue: takeOffseasonRescue,
                                         onNavigate: ke,
                                       }),
                                     n === "media" &&
@@ -10170,7 +10353,7 @@ function Ds(e) {
           (r.seasonProfit >= 0 ? 14 : -12) +
           Math.min(15, (e.cash / Math.max(1, e.boardGoals.cash)) * 12) -
           c -
-          e.debt / 22e3,
+          getDebtSnapshot(e).totalDebt / 22e3,
       ),
       0,
       100,
@@ -10255,7 +10438,8 @@ function Gs(e) {
     r = b((Ct(e) / Math.max(1, e.boardGoals.stadiumLevels)) * 100, 0, 100),
     c = b((e.fans / Math.max(1, e.boardGoals.fans)) * 100, 0, 100),
     i = b(
-      (e.cash / Math.max(1, e.boardGoals.cash)) * 100 - e.debt / 1e3,
+      (e.cash / Math.max(1, e.boardGoals.cash)) * 100 -
+        getDebtSnapshot(e).totalDebt / 1e3,
       0,
       100,
     ),
@@ -10329,7 +10513,8 @@ function Gs(e) {
   ];
 }
 function io(e, s, n) {
-  const r = n.cash > n.boardGoals.cash * 0.55 && n.debt < 2e4;
+  const r =
+    n.cash > n.boardGoals.cash * 0.55 && getDebtSnapshot(n).totalDebt < 2e4;
   return ((n.boardStrategy === "sporting" &&
     (s === "transfer" || s === "salary")) ||
     (n.boardStrategy === "financial" && s === "reserve") ||
@@ -10799,27 +10984,21 @@ function pe(e, s = se(e), n = yt(e)) {
   const x = Math.max(1, y.perFanValue * g + f.perFanValue * (1 - g)),
     R = Le(e).reduce((O, Q) => O + Q.weeklyPay, 0);
   let E = Cs(e, r, c, !1).revenue;
-  const T =
-      e.stadiumLoan > 0
-        ? Math.min(
-            e.stadiumLoan,
-            Math.max(750, Math.round(e.stadiumLoan / 120)),
-          )
-        : 0,
+  const T = getDebtSnapshot(e),
     Y =
       s +
       n +
       In(e) +
-      T +
       Math.round((qe(e) < 3 ? 180 : 700) + w * (qe(e) < 3 ? 0.2 : 0.35)),
     ae = v + $ + D + q + R + E,
     B = ae - Y,
-    W = e.schedule.filter((O) => !O.played).length,
-    L = B * Math.max(1, W),
-    U = B < 0 ? Math.max(0, e.cash / Math.max(1, Math.abs(B))) : null,
+    W = B - T.weeklyPayment,
+    L = W * Math.max(1, e.schedule.filter((O) => !O.played).length),
+    U = W < 0 ? Math.max(0, e.cash / Math.max(1, Math.abs(W))) : null,
     G = ae > 0 ? (s / ae) * 100 : 100,
     re = ae > 0 ? (R / ae) * 100 : 0,
-    he = Math.ceil(Math.max(0, Y - R - E) / x);
+    he = Math.ceil(Math.max(0, Y - R - E) / x),
+    O = Math.max(Y * 2, T.weeklyPayment * 4, 5e3);
   return {
     expectedAttendance: w,
     ticketRevenue: v,
@@ -10829,14 +11008,20 @@ function pe(e, s = se(e), n = yt(e)) {
     sponsorRevenue: R,
     tvRevenue: E,
     income: ae,
-    expenses: Y,
-    profit: B,
-    remainingGames: W,
+    expensesBeforeDebt: Y,
+    debtPayment: T.weeklyPayment,
+    expenses: Y + T.weeklyPayment,
+    operatingProfit: B,
+    profit: W,
+    remainingGames: e.schedule.filter((O) => !O.played).length,
     seasonProfit: L,
     runwayWeeks: U,
     salaryShare: G,
     sponsorDependency: re,
     breakEvenAttendance: he,
+    recommendedReserve: Math.round(O),
+    freeCash: Math.max(0, Math.round(e.cash - O)),
+    cashForecast: buildCashForecast(e, W, 4),
   };
 }
 function me(e) {
@@ -13593,7 +13778,8 @@ function Co({ report: e, onContinue: s }) {
       e.finance.salaries +
       e.finance.staff +
       e.finance.maintenance +
-      e.finance.matchOps,
+      e.finance.matchOps +
+      (e.finance.debtService ?? 0),
     c = e.capacity ?? Math.max(e.attendance, 1),
     i = e.occupancy ?? e.attendance / Math.max(1, c),
     d = Gr(e),
@@ -13794,7 +13980,7 @@ function Co({ report: e, onContinue: s }) {
                       positive: !0,
                     }),
                     t(Pe, {
-                      label: "Sponsor og TV",
+                      label: "Sponsor og medier",
                       value:
                         e.finance.sponsor +
                         e.finance.sponsorBonus +
@@ -13830,6 +14016,12 @@ function Co({ report: e, onContinue: s }) {
                       value: e.finance.matchOps,
                       expense: !0,
                     }),
+                    (e.finance.debtService ?? 0) > 0 &&
+                      t(Pe, {
+                        label: `Avdrag og renter${e.finance.loanInterest ? ` (${h(e.finance.loanInterest)} renter)` : ""}`,
+                        value: e.finance.debtService,
+                        expense: !0,
+                      }),
                   ],
                 }),
                 a("div", {
@@ -13856,8 +14048,24 @@ function Co({ report: e, onContinue: s }) {
                       ],
                     }),
                     a("p", {
-                      children: ["TV-publikum: ", Z(e.tvAudience ?? 0)],
+                      children: [
+                        e.mediaPayout?.format ?? "Medier",
+                        ": ",
+                        Z(e.tvAudience ?? 0),
+                        " seere/lyttere",
+                      ],
                     }),
+                    e.mediaPayout &&
+                      a("p", {
+                        children: [
+                          h(e.mediaPayout.fixedFee),
+                          " fast + ",
+                          h(e.mediaPayout.cpmRevenue),
+                          " ved ",
+                          e.mediaPayout.cpm,
+                          " CPM",
+                        ],
+                      }),
                   ],
                 }),
               ],
@@ -14061,7 +14269,7 @@ function Po({
         return;
       }
       if (!w.budgetApproved) {
-        Gt(e).length ? y("finance") : c();
+        Gt(e).length ? y("finance", "loans") : c();
         return;
       }
       s();
@@ -14232,6 +14440,10 @@ function Po({
                       t("p", {
                         children:
                           "Assistenten beholder n\xF8kkelspillere og talenter, og frigir overfl\xF8dig bredde.",
+                      }),
+                      t("small", {
+                        children:
+                          "Mangler klubben kontanter til bonus, tilbys automatisk en bonusfri avtale med litt høyere ukelønn.",
                       }),
                     ],
                   }),
@@ -14575,7 +14787,7 @@ function Po({
                       }),
                       t("button", {
                         className: "soft-button",
-                        onClick: () => y("finance"),
+                        onClick: () => y("finance", "sponsors"),
                         children: "Se alle tilbud",
                       }),
                     ],
@@ -14653,7 +14865,7 @@ function Po({
                         ),
                         t("button", {
                           className: "soft-button",
-                          onClick: () => y("finance"),
+                          onClick: () => y("finance", "loans"),
                           children: "\xC5pne \xF8konomien",
                         }),
                       ],
@@ -16145,27 +16357,38 @@ function xo({
                 t("div", {
                   className: "contract-offers",
                   children: E.map((T) => {
+                    const ae =
+                      u && e.cash < T.signingBonus
+                        ? {
+                            ...T,
+                            salary: Math.round(T.salary * 1.16),
+                            signingBonus: 0,
+                            bonusFree: !0,
+                          }
+                        : T;
                     const Y =
                       d ||
                       e.roster.length >= Je ||
-                      e.cash < T.signingBonus ||
-                      g.space < T.salary ||
-                      f < T.salary;
+                      (!u && e.cash < ae.signingBonus) ||
+                      g.space < ae.salary ||
+                      f < ae.salary;
                     return a(
                       "button",
                       {
-                        className: T.years === 2 ? "recommended" : "",
-                        onClick: () => r(R.id, T.years),
+                        className: ae.years === 2 ? "recommended" : "",
+                        onClick: () => r(R.id, ae.years),
                         disabled: Y,
                         children: [
-                          a("strong", { children: [T.years, " \xE5r"] }),
-                          a("span", { children: [h(T.salary), "/uke"] }),
+                          a("strong", { children: [ae.years, " \xE5r"] }),
+                          a("span", { children: [h(ae.salary), "/uke"] }),
                           a("small", {
-                            children: [h(T.signingBonus), " bonus"],
+                            children: ae.bonusFree
+                              ? "Bonusfri avtale"
+                              : [h(ae.signingBonus), " bonus"],
                           }),
                         ],
                       },
-                      T.years,
+                      ae.years,
                     );
                   }),
                 }),
@@ -17486,6 +17709,7 @@ function Ao({
   onTv: y,
   onLoan: f,
   onPayDebt: N,
+  onRescue: rescue,
   onNavigate: w,
 }) {
   const [v, $] = ge(null),
@@ -17550,7 +17774,7 @@ function Ao({
     ),
     Q = x.ticketRevenue + x.vipRevenue + x.foodRevenue + x.merchRevenue,
     De = x.sponsorRevenue + x.tvRevenue,
-    Ae = Math.max(0, x.expenses - s - n),
+    Ae = Math.max(0, x.expensesBeforeDebt - s - n),
     Ge =
       x.profit >= 0
         ? {
@@ -17593,29 +17817,15 @@ function Ao({
             text: `Behold minst ${h(Math.max(5e3, x.expenses * 3))} som reserve f\xF8r du signerer spillere eller bygger ut.`,
             action: "\xD8konomien er trygg",
           },
-    xe = [
-      {
-        id: "local",
-        name: "Local Sports Network",
-        weeklyPay: 900 + e.leagueIndex * 500,
-        audience: 18e3,
-        minReputation: 0,
-      },
-      {
-        id: "stream",
-        name: "StreamSport+",
-        weeklyPay: 1750 + e.leagueIndex * 900,
-        audience: 55e3,
-        minReputation: 25,
-      },
-      {
-        id: "national",
-        name: "National Prime",
-        weeklyPay: 3800 + e.leagueIndex * 1800,
-        audience: 18e4,
-        minReputation: 55,
-      },
-    ],
+    xe = getBroadcastDeals(e.leagueIndex),
+    debtSnapshot = getDebtSnapshot(e),
+    loanDashboard = getLoanDashboard(e, {
+      income: x.income,
+      expenses: x.expensesBeforeDebt,
+      operatingProfit: x.operatingProfit,
+    }),
+    latestMedia = e.mediaLedger?.[0],
+    nextMedia = Cs(e, Qe(e), mn(e), !1),
     He = (P, V) => {
       const de = P === "safe" ? 82 : P === "balanced" ? 58 : 32,
         te =
@@ -17665,6 +17875,16 @@ function Ao({
             onClick: () => c("pricing"),
             children: [t(_, { name: "ticket" }), " Priser"],
           }),
+          a("button", {
+            className: r === "loans" ? "active" : "",
+            onClick: () => c("loans"),
+            children: [
+              t(_, { name: "finance" }),
+              " Finansiering ",
+              debtSnapshot.totalDebt > 0 &&
+                t("span", { children: h(debtSnapshot.totalDebt) }),
+            ],
+          }),
         ],
       }),
       r === "overview" &&
@@ -17700,7 +17920,22 @@ function Ao({
                   children: [
                     t("span", { children: "Penger p\xE5 konto" }),
                     t("strong", { children: h(e.cash) }),
-                    t("small", { children: "Kan brukes n\xE5" }),
+                    t("small", {
+                      children:
+                        "Saldo nå. Ukesresultatet bokføres først etter neste kamp.",
+                    }),
+                  ],
+                }),
+                a("article", {
+                  children: [
+                    t("span", { children: "Reserve / fritt beløp" }),
+                    t("strong", {
+                      className: x.freeCash > 0 ? "positive" : "warning",
+                      children: h(x.freeCash),
+                    }),
+                    t("small", {
+                      children: `${h(x.recommendedReserve)} anbefalt reserve`,
+                    }),
                   ],
                 }),
                 a("article", {
@@ -17715,6 +17950,18 @@ function Ao({
                     }),
                     a("small", {
                       children: [x.remainingGames, " kampuker gjenst\xE5r"],
+                    }),
+                  ],
+                }),
+                a("article", {
+                  children: [
+                    t("span", { children: "Gjeldstrekk" }),
+                    t("strong", { children: h(x.debtPayment) }),
+                    a("small", {
+                      children: [
+                        h(debtSnapshot.totalDebt),
+                        " i samlet restgjeld",
+                      ],
                     }),
                   ],
                 }),
@@ -17787,7 +18034,7 @@ function Ao({
                       positive: !0,
                     }),
                     t(Pe, {
-                      label: "TV og ligafordeling",
+                      label: "Medier: fastbeløp, CPM og ligafordeling",
                       value: x.tvRevenue,
                       positive: !0,
                     }),
@@ -17826,6 +18073,12 @@ function Ao({
                       value: Ae,
                       expense: !0,
                     }),
+                    x.debtPayment > 0 &&
+                      t(Pe, {
+                        label: "Automatiske renter og avdrag",
+                        value: x.debtPayment,
+                        expense: !0,
+                      }),
                     t(Pe, {
                       label: "Totalt per kampuke",
                       value: x.expenses,
@@ -17868,10 +18121,43 @@ function Ao({
                       (x.runwayWeeks ?? 99) < 4 &&
                       t("button", {
                         className: "danger-button",
-                        onClick: f,
-                        children: "Ta krisel\xE5n",
+                        onClick: () => c("loans"),
+                        children: "Se finansiering",
                       }),
                   ],
+                }),
+              ],
+            }),
+            a("section", {
+              className: "cash-forecast-v22",
+              children: [
+                a("div", {
+                  className: "section-heading",
+                  children: a("div", {
+                    children: [
+                      t("p", { className: "eyebrow", children: "Likviditet" }),
+                      t("h3", { children: "Fire ukers kontantprognose" }),
+                      t("p", {
+                        children:
+                          "Prognosen bruker dagens drift, medieinntekt og obligatoriske gjeldstrekk.",
+                      }),
+                    ],
+                  }),
+                }),
+                t("div", {
+                  children: x.cashForecast.map((P) =>
+                    a(
+                      "article",
+                      {
+                        className: P.cash < 0 ? "danger" : "",
+                        children: [
+                          a("span", { children: ["Uke +", P.week] }),
+                          t("strong", { children: h(P.cash) }),
+                        ],
+                      },
+                      P.week,
+                    ),
+                  ),
                 }),
               ],
             }),
@@ -18590,6 +18876,263 @@ function Ao({
             }),
           ],
         }),
+      r === "loans" &&
+        a(X, {
+          children: [
+            a("section", {
+              className: "loan-capacity-v22",
+              children: [
+                a("div", {
+                  children: [
+                    t("p", { className: "eyebrow", children: "Samlet lånetak" }),
+                    t("h2", {
+                      children: [
+                        h(loanDashboard.used),
+                        " / ",
+                        h(loanDashboard.limit),
+                      ],
+                    }),
+                    t("p", {
+                      children:
+                        "Rammen beregnes av inntekter, klubbverdi, klubbprofil, styretillit og eksisterende gjeld. Stadionlån teller med.",
+                    }),
+                  ],
+                }),
+                a("div", {
+                  children: [
+                    t("span", { children: "Ledig ramme" }),
+                    t("strong", { children: h(loanDashboard.available) }),
+                    a("small", {
+                      children: [
+                        "Kredittscore ",
+                        loanDashboard.creditScore,
+                        "/100",
+                      ],
+                    }),
+                  ],
+                }),
+                t("div", {
+                  className: "loan-limit-meter",
+                  children: t("i", {
+                    style: {
+                      width: `${Math.min(100, loanDashboard.debtRatio * 100)}%`,
+                    },
+                  }),
+                }),
+              ],
+            }),
+            a("div", {
+              className: "loan-products-v22",
+              children: loanDashboard.products.map((P) =>
+                a(
+                  "article",
+                  {
+                    className: P.eligible ? "" : "locked",
+                    children: [
+                      a("header", {
+                        children: [
+                          a("div", {
+                            children: [
+                              t("span", { children: P.id === "emergency" ? "NØD" : "LÅN" }),
+                              t("h3", { children: P.label }),
+                            ],
+                          }),
+                          a("strong", {
+                            children: [Math.round(P.annualRate * 100), "%"],
+                          }),
+                        ],
+                      }),
+                      t("p", { children: P.description }),
+                      a("div", {
+                        children: [
+                          a("span", {
+                            children: [
+                              "Utbetalt ",
+                              t("b", { children: h(P.amount) }),
+                            ],
+                          }),
+                          a("span", {
+                            children: [
+                              "Etablering ",
+                              t("b", { children: h(P.fee) }),
+                            ],
+                          }),
+                          a("span", {
+                            children: [
+                              "Tvungent trekk ",
+                              a("b", { children: [h(P.weeklyPayment), "/uke"] }),
+                            ],
+                          }),
+                          a("span", {
+                            children: [
+                              "Løpetid ",
+                              a("b", { children: [P.termWeeks, " kampuker"] }),
+                            ],
+                          }),
+                        ],
+                      }),
+                      a("small", {
+                        className: P.eligible ? "loan-preview-good" : "loan-preview-lock",
+                        children: P.eligible
+                          ? `Etter lånet: ${h(debtSnapshot.weeklyPayment + P.weeklyPayment)}/uke i gjeldstrekk og ${h(P.remainingAfter)} ledig ramme.`
+                          : P.reason,
+                      }),
+                      t("button", {
+                        className: P.id === "emergency" ? "danger-button" : "primary-button",
+                        disabled: !P.eligible,
+                        onClick: () => f(P.id),
+                        children: P.eligible
+                          ? `Ta ${P.label.toLowerCase()}`
+                          : "Ikke tilgjengelig",
+                      }),
+                    ],
+                  },
+                  P.id,
+                ),
+              ),
+            }),
+            a("section", {
+              className: "active-loans-v22",
+              children: [
+                a("div", {
+                  className: "section-heading",
+                  children: a("div", {
+                    children: [
+                      t("p", { className: "eyebrow", children: "Nedbetalingsplan" }),
+                      t("h3", { children: "Aktiv gjeld" }),
+                      a("p", {
+                        children: [
+                          h(debtSnapshot.weeklyPayment),
+                          " trekkes hver kampuke uansett kontantsaldo.",
+                        ],
+                      }),
+                    ],
+                  }),
+                }),
+                debtSnapshot.loans.length || debtSnapshot.stadiumDebt > 0
+                  ? a("div", {
+                      children: [
+                        ...debtSnapshot.loans.map((P) =>
+                          a(
+                            "article",
+                            {
+                              children: [
+                                a("div", {
+                                  children: [
+                                    t("strong", { children: P.label }),
+                                    a("small", {
+                                      children: [
+                                        Math.round(P.annualRate * 100),
+                                        "% rente · ",
+                                        P.weeksRemaining,
+                                        " kampuker igjen",
+                                      ],
+                                    }),
+                                  ],
+                                }),
+                                a("div", {
+                                  children: [
+                                    t("strong", { children: h(P.balance) }),
+                                    a("small", {
+                                      children: [h(P.weeklyPayment), "/uke"],
+                                    }),
+                                  ],
+                                }),
+                              ],
+                            },
+                            P.id,
+                          ),
+                        ),
+                        debtSnapshot.stadiumDebt > 0 &&
+                          a("article", {
+                            children: [
+                              a("div", {
+                                children: [
+                                  t("strong", { children: "Sikret stadionlån" }),
+                                  t("small", {
+                                    children: "Automatisk avdrag knyttet til anlegget",
+                                  }),
+                                ],
+                              }),
+                              a("div", {
+                                children: [
+                                  t("strong", { children: h(debtSnapshot.stadiumDebt) }),
+                                  a("small", {
+                                    children: [
+                                      h(debtSnapshot.weeklyStadiumPayment),
+                                      "/uke",
+                                    ],
+                                  }),
+                                ],
+                              }),
+                            ],
+                          }),
+                      ],
+                    })
+                  : a("div", {
+                      className: "all-clear",
+                      children: [
+                        t(_, { name: "check" }),
+                        a("div", {
+                          children: [
+                            t("strong", { children: "Klubben er gjeldfri" }),
+                            t("small", {
+                              children: "Ingen renter eller avdrag trekkes.",
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                debtSnapshot.totalDebt > 0 &&
+                  a("div", {
+                    className: "loan-extra-payments",
+                    children: [
+                      t("button", {
+                        onClick: () => N(5e3),
+                        disabled: e.cash <= 0,
+                        children: "Betal ekstra $5K",
+                      }),
+                      t("button", {
+                        onClick: () => N(1e4),
+                        disabled: e.cash <= 0,
+                        children: "Betal ekstra $10K",
+                      }),
+                      t("button", {
+                        onClick: () => N(Math.min(e.cash, debtSnapshot.totalDebt)),
+                        disabled: e.cash <= 0,
+                        children: "Betal mest mulig",
+                      }),
+                    ],
+                  }),
+              ],
+            }),
+            (e.cash < 0 ||
+              (x.profit < 0 && (x.runwayWeeks ?? 99) < 6) ||
+              (e.phase === "offseason" &&
+                e.history[e.history.length - 1]?.result === "Mester" &&
+                Pr(e).some((P) => P.includes("reserve")))) &&
+              a("section", {
+                className: "offseason-rescue-v22",
+                children: [
+                  t(_, { name: "alert" }),
+                  a("div", {
+                    children: [
+                      t("strong", { children: "Ingen offseason skal låse karrieren" }),
+                      t("p", {
+                        children:
+                          "Først brukes et nødlån innenfor lånetaket. Er rammen helt brukt opp, kan styret gi ett engangstilskudd per sesong mot kraftig tap av tillit.",
+                      }),
+                    ],
+                  }),
+                  t("button", {
+                    className: "danger-button",
+                    onClick: rescue,
+                    children: "Be styret om redningspakke",
+                  }),
+                ],
+              }),
+          ],
+        }),
       r === "pricing" &&
         a(X, {
           children: [
@@ -18687,13 +19230,13 @@ function Ao({
                       children: [
                         e.cash < Math.max(5e3, x.expenses * 2) &&
                           t("button", {
-                            onClick: f,
-                            children: "Ta krisel\xE5n",
+                            onClick: () => c("loans"),
+                            children: "Se finansiering",
                           }),
                         t("button", {
-                          onClick: N,
-                          disabled: e.debt <= 0 || e.cash <= 0,
-                          children: "Betal gjeld",
+                          onClick: () => c("loans"),
+                          disabled: debtSnapshot.totalDebt <= 0,
+                          children: "Se gjeldsplan",
                         }),
                       ],
                     }),
@@ -18701,9 +19244,59 @@ function Ao({
                 }),
               ],
             }),
+            a("section", {
+              className: "media-cpm-v22",
+              children: [
+                t(_, { name: "broadcast" }),
+                a("div", {
+                  children: [
+                    t("p", {
+                      className: "eyebrow",
+                      children: latestMedia ? "Siste medieoppgjør" : "Neste kamp – prognose",
+                    }),
+                    t("h3", {
+                      children: latestMedia?.channel ?? nextMedia.channel,
+                    }),
+                    a("p", {
+                      children: [
+                        Z(latestMedia?.audience ?? nextMedia.audience),
+                        " seere/lyttere · ",
+                        latestMedia?.cpm ?? nextMedia.cpm,
+                        " CPM",
+                      ],
+                    }),
+                  ],
+                }),
+                a("div", {
+                  children: [
+                    a("span", {
+                      children: [
+                        "Fast ",
+                        t("b", {
+                          children: h(latestMedia?.fixedFee ?? nextMedia.fixedFee),
+                        }),
+                      ],
+                    }),
+                    a("span", {
+                      children: [
+                        "CPM ",
+                        t("b", {
+                          children: h(
+                            latestMedia?.cpmRevenue ?? nextMedia.cpmRevenue,
+                          ),
+                        }),
+                      ],
+                    }),
+                    a("strong", {
+                      children: h(latestMedia?.total ?? nextMedia.revenue),
+                    }),
+                  ],
+                }),
+              ],
+            }),
             t("h3", {
               className: "section-title",
-              children: "TV- og str\xF8mmerettigheter",
+              children: "TV- og strømmerettigheter",
             }),
             _t(e, "tv")
               ? t("div", {
@@ -18719,7 +19312,9 @@ function Ao({
                           t(_, { name: "broadcast" }),
                           t("strong", { children: P.name }),
                           a("span", { children: [Z(P.audience), " seere"] }),
-                          a("b", { children: [h(P.weeklyPay), "/uke"] }),
+                          a("b", {
+                            children: [h(P.fixedFee), " fast + ", P.cpm, " CPM"],
+                          }),
                           a("small", {
                             children: ["Krever profil ", P.minReputation],
                           }),
@@ -18740,7 +19335,7 @@ function Ao({
                         }),
                         t("p", {
                           children:
-                            "N\xE5 5 000 supportere for \xE5 forhandle egne TV-avtaler.",
+                            "Nå 5 000 supportere for å forhandle egne TV-avtaler. Frem til da betaler lokalradio og utvalgte enkeltkamper fastbeløp + CPM automatisk.",
                         }),
                       ],
                     }),

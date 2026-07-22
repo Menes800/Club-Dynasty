@@ -1,9 +1,16 @@
-# Club Dynasty v21.0
+# Club Dynasty v22.0
 
 Komplett React/Vite-prosjekt for StackBlitz. Kildekoden ligger direkte i
 repoet, slik at prosjektet starter uten utpakking eller installasjonsskript.
 
 ## Hovedinnhold
+- Ny finansieringsside med samlet lånetak, kredittscore, tilgjengelig ramme og tydelige lånevilkår.
+- Kassekreditt fra første sesong, ordinært driftslån og et dyrt nødlån ved reell krise.
+- Automatisk ukentlig betaling av renter og avdrag, ekstra innbetaling og kontrollert gjeldsrestrukturering.
+- Ingen stabling av samme lånetype, og stadiongjeld teller med i klubbens samlede låneramme.
+- Lokalradio, enkeltkamper på TV og medieavtaler betaler fast sats pluss CPM basert på faktisk publikum.
+- Fire ukers kontantprognose og tydelig skille mellom kontantbeholdning, driftsresultat og gjeldsbetaling.
+- Bonusfrie kontraktsfornyelser og en styresanksjonert siste utvei hindrer økonomisk offseason-lås.
 - Ekte kampdag med fire quarters, pause, 1x/2x/4x hastighet og valg ved halftime og i sluttminuttene.
 - Navngitte scoringer, turnovers og forsvarsspill, lagstatistikk og komplett kampboks.
 - Sesong- og karrierestatistikk for spillerne, statistikkledere, priser, rekorder og klubblegender.
@@ -43,5 +50,5 @@ npm run build
 npm test
 ```
 
-v20- og eldre lagringer migreres automatisk. Eksisterende spillere får et
-kompatibelt karriereregister, og detaljert statistikk bygges videre fra v21.
+v21- og eldre lagringer migreres automatisk. Eldre gjeld blir gjort om til en
+nedbetalingsplan, mens spillerkarrierer og statistikk beholdes.

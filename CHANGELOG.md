@@ -1,5 +1,17 @@
 # Changelog
 
+## v22.0.0 – Finance, Debt & Media
+- Samlet lånetak basert på inntekter, klubbverdi, omdømme, styretillit og eksisterende gjeld.
+- Tre tydelige låneprodukter med maksbeløp, etableringsgebyr, rente, løpetid og ukentlig betaling.
+- Renter og avdrag trekkes automatisk hver kampuke, uansett klubbens kontantbeholdning.
+- Samme lånetype kan ikke stables, og stadiongjeld bruker den samme lånerammen.
+- Ekstra innbetaling, full innfrielse og kontrollert restrukturering ved offseason-krise.
+- Bonusfrie kontraktsfornyelser og en begrenset styreløsning hindrer softlock.
+- Radio og TV gir fast betaling pluss CPM per tusen seere eller lyttere.
+- Medieinntekt, publikum og CPM vises både i økonomien og kamprapporten.
+- Fire ukers kontantprognose skiller kontanter, driftsresultat og gjeldsbetaling.
+- Automatisk migrering av eldre gjeld og v21-lagringer.
+
 ## v21.0.0 – Matchday & Player Legacy
 - Ny direktekamp med fire quarters, klokke, pause og 1x/2x/4x hastighet.
 - Taktiske valg ved halftime og sent i fjerde quarter påvirker kampen.

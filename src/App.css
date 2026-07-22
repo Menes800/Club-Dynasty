@@ -9169,6 +9169,240 @@ body {
   }
 }
 
+/* v22 – financing, cash forecast and transparent media income */
+.cash-forecast-v22,
+.loan-capacity-v22,
+.active-loans-v22,
+.offseason-rescue-v22,
+.media-cpm-v22 {
+  margin-top: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+}
+.cash-forecast-v22 > div:last-child {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+.cash-forecast-v22 article {
+  display: grid;
+  gap: 5px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--panel-soft);
+}
+.cash-forecast-v22 article span,
+.cash-forecast-v22 article strong {
+  display: block;
+}
+.cash-forecast-v22 article span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.cash-forecast-v22 article.danger {
+  border-color: color-mix(in srgb, var(--red) 35%, var(--line));
+  background: color-mix(in srgb, var(--red) 7%, var(--panel));
+}
+.cash-forecast-v22 article.danger strong {
+  color: var(--red);
+}
+.loan-capacity-v22 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  gap: 15px;
+  align-items: end;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--blue) 8%, var(--panel)),
+    var(--panel)
+  );
+}
+.loan-capacity-v22 h2,
+.loan-capacity-v22 p {
+  margin-bottom: 6px;
+}
+.loan-capacity-v22 > div:nth-child(2) {
+  display: grid;
+  gap: 3px;
+  text-align: right;
+}
+.loan-capacity-v22 > div:nth-child(2) span,
+.loan-capacity-v22 > div:nth-child(2) small {
+  color: var(--muted);
+}
+.loan-capacity-v22 > div:nth-child(2) strong {
+  font-size: 1.45rem;
+}
+.loan-limit-meter {
+  grid-column: 1 / -1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--panel-lighter);
+}
+.loan-limit-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--blue), var(--orange), var(--red));
+}
+.loan-products-v22 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.loan-products-v22 article {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: 17px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: var(--panel);
+}
+.loan-products-v22 article.locked {
+  background: var(--panel-soft);
+}
+.loan-products-v22 header,
+.active-loans-v22 article {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.loan-products-v22 header span {
+  color: var(--blue);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+.loan-products-v22 h3,
+.loan-products-v22 p {
+  margin: 2px 0 0;
+}
+.loan-products-v22 p,
+.loan-products-v22 small,
+.active-loans-v22 small {
+  color: var(--muted);
+}
+.loan-products-v22 article > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.loan-products-v22 article > div span,
+.loan-products-v22 article > div b {
+  display: block;
+}
+.loan-products-v22 article > div span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.loan-products-v22 button {
+  width: 100%;
+  margin-top: auto;
+}
+.loan-preview-good {
+  color: var(--green) !important;
+}
+.loan-preview-lock {
+  color: var(--orange) !important;
+}
+.active-loans-v22 > div:not(.section-heading):not(.loan-extra-payments):not(.all-clear) {
+  display: grid;
+  gap: 8px;
+}
+.active-loans-v22 article {
+  align-items: center;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--panel-soft);
+}
+.active-loans-v22 article > div:last-child {
+  text-align: right;
+}
+.active-loans-v22 article strong,
+.active-loans-v22 article small {
+  display: block;
+}
+.loan-extra-payments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.loan-extra-payments button {
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-soft);
+  cursor: pointer;
+  font-weight: 800;
+}
+.offseason-rescue-v22,
+.media-cpm-v22 {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+.offseason-rescue-v22 {
+  border-color: color-mix(in srgb, var(--orange) 32%, var(--line));
+  background: color-mix(in srgb, var(--orange) 6%, var(--panel));
+}
+.offseason-rescue-v22 svg,
+.media-cpm-v22 svg {
+  color: var(--blue);
+}
+.offseason-rescue-v22 strong,
+.offseason-rescue-v22 p,
+.media-cpm-v22 h3,
+.media-cpm-v22 p {
+  margin: 0;
+}
+.media-cpm-v22 > div:last-child {
+  display: grid;
+  gap: 3px;
+  text-align: right;
+}
+.media-cpm-v22 > div:last-child span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.media-cpm-v22 > div:last-child strong {
+  color: var(--green);
+  font-size: 1.3rem;
+}
+@media (max-width: 980px) {
+  .loan-products-v22 {
+    grid-template-columns: 1fr;
+  }
+  .cash-forecast-v22 > div:last-child {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 620px) {
+  .loan-capacity-v22,
+  .offseason-rescue-v22,
+  .media-cpm-v22 {
+    grid-template-columns: 1fr;
+  }
+  .loan-capacity-v22 > div:nth-child(2),
+  .media-cpm-v22 > div:last-child {
+    text-align: left;
+  }
+  .cash-forecast-v22 > div:last-child,
+  .loan-products-v22 article > div {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* v21 – Matchday & Player Legacy */
 .fixture-actions {
   display: grid;
