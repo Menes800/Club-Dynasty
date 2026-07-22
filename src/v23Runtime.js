@@ -232,6 +232,14 @@ function prepareCoreWrite(key, serialized) {
   game = pendingSync.game;
   changed ||= pendingSync.changed;
 
+  if (!pendingSync.changed && incoming.municipalFunding) {
+    extension.funding = normalizeFundingState(incoming.municipalFunding);
+  }
+  if (!pendingSync.changed && Number(incoming.v23StartCapital)) {
+    extension.startCapital.choice = Number(incoming.v23StartCapital);
+    extension.startCapital.applied = Number(incoming.seasonStartCash || 0) > 20000;
+  }
+
   const capital = applyStartCapital(game, extension);
   game = capital.game;
   changed ||= capital.changed;
@@ -289,6 +297,13 @@ function bootstrapExistingSave() {
   const game = parseJson(rawGetItem.call(localStorage, CORE_KEY), null);
   if (!game) return;
   const extension = loadExtension();
+  if (game.municipalFunding) {
+    extension.funding = normalizeFundingState(game.municipalFunding);
+  }
+  if (Number(game.v23StartCapital)) {
+    extension.startCapital.choice = Number(game.v23StartCapital);
+    extension.startCapital.applied = Number(game.seasonStartCash || 0) > 20000;
+  }
   const repaired = applyStartCapital(game, extension);
   if (repaired.changed) {
     saveExtension(extension);
@@ -391,6 +406,9 @@ function renderStartCapital() {
   }
   const selected = capitalChoice(extension);
   const english = currentLanguage() === "en";
+  const signature = `${english ? "en" : "nb"}:${selected}`;
+  if (section.dataset.signature === signature) return;
+  section.dataset.signature = signature;
   section.innerHTML = `
     <div class="section-heading-inline">
       <div>
@@ -417,6 +435,7 @@ function renderStartCapital() {
       next.startCapital.applied = false;
       next.sync = null;
       saveExtension(next);
+      section.dataset.signature = "";
       renderStartCapital();
     });
   });
@@ -516,7 +535,24 @@ function bindFundingForm(panel, game) {
         ? `Application submitted. Response in ${result.application.processingWeeks} game weeks.`
         : `Søknaden er sendt. Svar kommer om ${result.application.processingWeeks} spilluker.`,
     );
+    panel.dataset.signature = "";
     renderMunicipalPanel();
+  });
+}
+
+function fundingSignature(game, funding) {
+  return JSON.stringify({
+    language: currentLanguage(),
+    city: game?.profile?.city || "",
+    updatedAt: funding.lastUpdatedAt,
+    applications: funding.applications.map((application) => [
+      application.id,
+      application.status,
+      application.approvedAmount,
+      application.dueAtWeek,
+      application.documentationRounds,
+    ]),
+    credits: funding.facilityCredits.map((credit) => [credit.id, credit.remaining]),
   });
 }
 
@@ -528,7 +564,6 @@ function renderMunicipalPanel() {
     button = document.createElement("button");
     button.id = "v23-municipal-tab";
     button.type = "button";
-    button.innerHTML = `<span aria-hidden="true">🏛️</span> ${text("municipalSupport")}`;
     button.addEventListener("click", (event) => {
       event.preventDefault();
       municipalTabActive = true;
@@ -536,6 +571,8 @@ function renderMunicipalPanel() {
     });
     nav.append(button);
   }
+  const buttonMarkup = `<span aria-hidden="true">🏛️</span> ${text("municipalSupport")}`;
+  if (button.innerHTML !== buttonMarkup) button.innerHTML = buttonMarkup;
   button.classList.toggle("active", municipalTabActive);
 
   if (!nav.dataset.v23Bound) {
@@ -568,6 +605,9 @@ function renderMunicipalPanel() {
   if (!game) return;
   const extension = loadExtension();
   const funding = normalizeFundingState(extension.funding);
+  const signature = fundingSignature(game, funding);
+  if (panel.dataset.signature === signature) return;
+  panel.dataset.signature = signature;
   const pending = funding.applications.filter((application) =>
     ["pending", "documentation"].includes(application.status),
   );
@@ -648,6 +688,7 @@ function renderMunicipalPanel() {
           ? "Documentation submitted. New response in two game weeks."
           : "Dokumentasjon er sendt. Nytt svar kommer om to spilluker.",
       );
+      panel.dataset.signature = "";
       renderMunicipalPanel();
     });
   });
@@ -672,7 +713,11 @@ function processFundingTick() {
   }
 
   saveExtension(extension);
-  if (municipalTabActive) renderMunicipalPanel();
+  if (municipalTabActive) {
+    const panel = document.getElementById("v23-municipal-panel");
+    if (panel) panel.dataset.signature = "";
+    renderMunicipalPanel();
+  }
   showToast(
     result.application.status === "documentation"
       ? text("documentation")
@@ -700,7 +745,7 @@ function translateDocument() {
     const replacement = language === "en" ? translations[trimmed] : reverseTranslations[node.nodeValue.trim()];
     if (language === "en" && replacement) {
       node.nodeValue = original.replace(trimmed, replacement);
-    } else if (language !== "en" && translatedNodes.has(node)) {
+    } else if (language !== "en" && translatedNodes.has(node) && node.nodeValue !== original) {
       node.nodeValue = original;
     }
   }
