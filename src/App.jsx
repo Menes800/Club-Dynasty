@@ -15723,6 +15723,7 @@ function PlayerLegacyPanel({ game: e, onPlayer: s }) {
         className: "legacy-career-table",
         children: c.map((d, u) => {
           const g = playerHeadlineStat(d, "career");
+          const k = Number(d.careerStats?.games ?? d.careerGames ?? 0);
           return a(
             "button",
             {
@@ -15737,10 +15738,7 @@ function PlayerLegacyPanel({ game: e, onPlayer: s }) {
                   ],
                 }),
                 a("em", {
-                  children: [
-                    formatStatValue(d.careerStats?.games ?? d.careerGames),
-                    " kamper",
-                  ],
+                  children: [formatStatValue(k), k === 1 ? " kamp" : " kamper"],
                 }),
               ],
             },

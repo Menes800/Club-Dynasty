@@ -4,12 +4,14 @@ import test from "node:test";
 import {
   applyMatchStatsToRoster,
   archiveRosterSeason,
+  careerLeaders,
   createMatchPlayerBox,
   finalizeMatchPlayerBox,
   normalizeRosterLegacy,
   recordDefensivePlay,
   recordScoringPlay,
   selectSeasonAwards,
+  seasonLeaders,
   startNewPlayerSeason,
   topMatchPerformers,
 } from "./playerLegacy.js";
@@ -75,6 +77,18 @@ test("turns live match events into season and career statistics", () => {
     1,
   );
   assert.ok(selectSeasonAwards(updated).mvp);
+  assert.equal(
+    seasonLeaders(updated).every(
+      (entry) => Number(entry.player.seasonStats[entry.key]) > 0,
+    ),
+    true,
+  );
+  assert.equal(
+    careerLeaders(updated).every(
+      (entry) => Number(entry.player.careerStats[entry.key]) > 0,
+    ),
+    true,
+  );
 });
 
 test("archives a season and resets only season totals", () => {

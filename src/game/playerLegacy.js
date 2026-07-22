@@ -410,31 +410,45 @@ export function selectSeasonAwards(roster = []) {
 }
 
 export function seasonLeaders(roster = []) {
-  const leader = (key) =>
-    [...roster].sort(
-      (a, b) =>
-        Number(b.seasonStats?.[key] ?? 0) - Number(a.seasonStats?.[key] ?? 0),
-    )[0];
+  const leader = (key, positions) =>
+    roster
+      .filter((player) => !positions || positions.includes(player.position))
+      .sort(
+        (a, b) =>
+          Number(b.seasonStats?.[key] ?? 0) - Number(a.seasonStats?.[key] ?? 0),
+      )[0];
   return [
     {
       key: "passingYards",
       label: "Pasningsyards",
-      player: leader("passingYards"),
+      player: leader("passingYards", ["QB"]),
     },
-    { key: "rushingYards", label: "Løpsyards", player: leader("rushingYards") },
+    {
+      key: "rushingYards",
+      label: "Løpsyards",
+      player: leader("rushingYards", ["QB", "RB"]),
+    },
     {
       key: "receivingYards",
       label: "Mottaksyards",
-      player: leader("receivingYards"),
+      player: leader("receivingYards", ["RB", "WR", "TE"]),
     },
-    { key: "tackles", label: "Taklinger", player: leader("tackles") },
-    { key: "sacks", label: "Sacks", player: leader("sacks") },
+    {
+      key: "tackles",
+      label: "Taklinger",
+      player: leader("tackles", ["DL", "LB", "CB", "S"]),
+    },
+    {
+      key: "sacks",
+      label: "Sacks",
+      player: leader("sacks", ["DL", "LB"]),
+    },
     {
       key: "interceptions",
       label: "Interceptions",
-      player: leader("interceptions"),
+      player: leader("interceptions", ["LB", "CB", "S"]),
     },
-  ].filter((entry) => entry.player);
+  ].filter((entry) => Number(entry.player?.seasonStats?.[entry.key] ?? 0) > 0);
 }
 
 export function careerLeaders(roster = [], legends = []) {
@@ -445,31 +459,37 @@ export function careerLeaders(roster = [], legends = []) {
       careerStats: legend.careerStats ?? emptyPlayerStats(0),
     })),
   ];
-  const leader = (key) =>
-    [...pool].sort(
-      (a, b) =>
-        Number(b.careerStats?.[key] ?? 0) - Number(a.careerStats?.[key] ?? 0),
-    )[0];
+  const leader = (key, positions) =>
+    pool
+      .filter((player) => !positions || positions.includes(player.position))
+      .sort(
+        (a, b) =>
+          Number(b.careerStats?.[key] ?? 0) - Number(a.careerStats?.[key] ?? 0),
+      )[0];
   return [
     { key: "games", label: "Kamper", player: leader("games") },
     {
       key: "passingTouchdowns",
       label: "Pasnings-TD",
-      player: leader("passingTouchdowns"),
+      player: leader("passingTouchdowns", ["QB"]),
     },
     {
       key: "rushingTouchdowns",
       label: "Løps-TD",
-      player: leader("rushingTouchdowns"),
+      player: leader("rushingTouchdowns", ["QB", "RB"]),
     },
     {
       key: "receivingTouchdowns",
       label: "Mottaks-TD",
-      player: leader("receivingTouchdowns"),
+      player: leader("receivingTouchdowns", ["RB", "WR", "TE"]),
     },
-    { key: "tackles", label: "Taklinger", player: leader("tackles") },
+    {
+      key: "tackles",
+      label: "Taklinger",
+      player: leader("tackles", ["DL", "LB", "CB", "S"]),
+    },
     { key: "mvpAwards", label: "MVP-priser", player: leader("mvpAwards") },
-  ].filter((entry) => entry.player);
+  ].filter((entry) => Number(entry.player?.careerStats?.[entry.key] ?? 0) > 0);
 }
 
 export function playerHeadlineStat(player, scope = "season") {
