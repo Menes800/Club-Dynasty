@@ -1,9 +1,16 @@
-# Club Dynasty v20.0
+# Club Dynasty v21.0
 
 Komplett React/Vite-prosjekt for StackBlitz. Kildekoden ligger direkte i
 repoet, slik at prosjektet starter uten utpakking eller installasjonsskript.
 
 ## Hovedinnhold
+- Ekte kampdag med fire quarters, pause, 1x/2x/4x hastighet og valg ved halftime og i sluttminuttene.
+- Navngitte scoringer, turnovers og forsvarsspill, lagstatistikk og komplett kampboks.
+- Sesong- og karrierestatistikk for spillerne, statistikkledere, priser, rekorder og klubblegender.
+- Levende ligasenter med klikkbare motstandere, AI-overganger, draftnyheter og tydeligere rivaloppgjør.
+- Hurtigsim og øyeblikkelig simulering er fortsatt tilgjengelig ved siden av den nye direktekampen.
+- Før-sesongens sluttspillvisning viser ikke lenger en falsk seed.
+- Offseason viser nå supporterendringen for hele sesongen.
 - Tydelig sluttspillhub med topp 4, topp 6 og topp 8 etter liganivå.
 - Auto-manager stopper alltid før sluttspill og ignorerer rutinemøter i styret.
 - Sponsorvedlikehold: Av, Vedlikehold eller Optimaliser.
@@ -30,4 +37,11 @@ npm run dev
 npm run build
 ```
 
-v19- og eldre lagringer migreres automatisk.
+## Test
+
+```bash
+npm test
+```
+
+v20- og eldre lagringer migreres automatisk. Eksisterende spillere får et
+kompatibelt karriereregister, og detaljert statistikk bygges videre fra v21.
