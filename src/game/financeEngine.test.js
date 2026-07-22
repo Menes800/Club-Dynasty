@@ -50,16 +50,89 @@ test("gives a profitable first-season club financing within a hard cap", () => {
   assert.ok(credit.balance <= dashboard.available);
 });
 
-test("prevents stacking the same loan and enforces the total limit", () => {
+test("tops up one credit facility without stacking separate loans", () => {
   const dashboard = getLoanDashboard(game, finance);
   const quote = dashboard.products.find((product) => product.id === "credit");
   const borrowed = addLoanFromQuote(game, quote, "credit-1").game;
   const after = getLoanDashboard(borrowed, finance);
+  const topUp = after.products.find((product) => product.id === "credit");
+  assert.equal(topUp.eligible, true);
+  assert.equal(topUp.isTopUp, true);
+  const toppedUp = addLoanFromQuote(borrowed, topUp, "ignored-new-id").game;
   assert.equal(
-    after.products.find((product) => product.id === "credit").eligible,
-    false,
+    toppedUp.loans.filter((loan) => loan.productId === "credit").length,
+    1,
   );
-  assert.ok(after.used <= after.limit);
+  assert.ok(getDebtSnapshot(toppedUp).totalDebt <= after.limit);
+});
+
+test("first-season operating loan stays available during a temporary deficit", () => {
+  const dashboard = getLoanDashboard(game, {
+    income: 3300,
+    expenses: 3800,
+    operatingProfit: -500,
+  });
+  const operating = dashboard.products.find(
+    (product) => product.id === "operating",
+  );
+  assert.equal(operating.eligible, true);
+  assert.ok(operating.amount >= operating.minimumAmount);
+});
+
+test("player can choose a smaller loan and sees the exact forced payment", () => {
+  const dashboard = getLoanDashboard(game, finance, { operating: 5000 });
+  const operating = dashboard.products.find(
+    (product) => product.id === "operating",
+  );
+  assert.equal(operating.amount, 5000);
+  assert.equal(
+    operating.weeklyPayment,
+    calculateLoanPayment(
+      operating.balance,
+      operating.annualRate,
+      operating.termWeeks,
+    ),
+  );
+  assert.ok(operating.totalWeeklyPaymentAfter >= operating.weeklyPayment);
+});
+
+test("season-one debt can never show available capacity with every route locked", () => {
+  const pressured = {
+    ...game,
+    phase: "offseason",
+    cash: 5800,
+    loans: normalizeLoanBook([
+      {
+        id: "credit-active",
+        productId: "credit",
+        label: "Kassekreditt",
+        balance: 3100,
+        annualRate: 0.19,
+        termWeeks: 24,
+        weeksRemaining: 14,
+      },
+      {
+        id: "emergency-active",
+        productId: "emergency",
+        label: "Styrets nødlån",
+        balance: 19400,
+        annualRate: 0.28,
+        termWeeks: 18,
+        weeksRemaining: 18,
+      },
+    ]),
+    debt: 22500,
+  };
+  const dashboard = getLoanDashboard(pressured, {
+    income: 2600,
+    expenses: 6000,
+    operatingProfit: -3400,
+  });
+  assert.ok(dashboard.available > 0);
+  assert.equal(
+    dashboard.products.some((product) => product.eligible),
+    true,
+  );
 });
 
 test("blocks every new loan when the total borrowing limit is used", () => {
@@ -69,7 +142,10 @@ test("blocks every new loan when the total borrowing limit is used", () => {
     finance,
   );
   assert.equal(capped.available, 0);
-  assert.equal(capped.products.every((product) => !product.eligible), true);
+  assert.equal(
+    capped.products.every((product) => !product.eligible),
+    true,
+  );
 });
 
 test("turns legacy scalar debt into a forced repayment plan", () => {
@@ -117,7 +193,10 @@ test("extra payments target the most expensive debt and reduce cash", () => {
   assert.equal(result.paid, 5000);
   assert.equal(result.game.cash, 0);
   assert.equal(snapshot.totalDebt, 5000);
-  assert.equal(snapshot.loans.some((loan) => loan.id === "expensive"), false);
+  assert.equal(
+    snapshot.loans.some((loan) => loan.id === "expensive"),
+    false,
+  );
 });
 
 test("restructuring consolidates loans instead of stacking more small debt", () => {

@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  calculateMediaPayout,
-  getBroadcastDeals,
-} from "./mediaEngine.js";
+import { calculateMediaPayout, getBroadcastDeals } from "./mediaEngine.js";
 
 const game = {
   leagueIndex: 0,
@@ -23,7 +20,8 @@ test("early clubs receive a small transparent radio payout", () => {
     payout.revenue,
     payout.fixedFee + payout.cpmRevenue + payout.leagueShare,
   );
-  assert.ok(payout.revenue < 2000);
+  assert.ok(payout.revenue >= 1500);
+  assert.ok(payout.revenue < 2500);
 });
 
 test("a selected TV deal pays fixed fee plus CPM without millions", () => {

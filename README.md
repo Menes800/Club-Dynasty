@@ -1,9 +1,17 @@
-# Club Dynasty v22.0
+# Club Dynasty v22.1
 
 Komplett React/Vite-prosjekt for StackBlitz. Kildekoden ligger direkte i
 repoet, slik at prosjektet starter uten utpakking eller installasjonsskript.
 
 ## Hovedinnhold
+
+- Reparert førstesesongøkonomi: en standardklubb tåler hele sesongen uten tvungent kriselån.
+- Startlønn, grunnsponsor og Rookie League-andel er balansert rundt et lite ukentlig underskudd.
+- Samme beregning brukes i kampoppgjøret og økonomiprognosen.
+- Driftslån er tilgjengelig fra sesong 1, og kassekreditt kan økes innenfor én fasilitet og et absolutt lånetak.
+- Spilleren velger minimum, anbefalt eller maksimalt lånebeløp og ser samlet tvungent trekk før godkjenning.
+- Offseason kan godkjennes med en tydelig tapsadvarsel; en kunstig seksukers buffer låser ikke lenger karrieren.
+- Eksisterende v22-lagringer i første sesong får automatisk lønns-, sponsor- og likviditetsreparasjon.
 - Ny finansieringsside med samlet lånetak, kredittscore, tilgjengelig ramme og tydelige lånevilkår.
 - Kassekreditt fra første sesong, ordinært driftslån og et dyrt nødlån ved reell krise.
 - Automatisk ukentlig betaling av renter og avdrag, ekstra innbetaling og kontrollert gjeldsrestrukturering.
@@ -50,5 +58,6 @@ npm run build
 npm test
 ```
 
-v21- og eldre lagringer migreres automatisk. Eldre gjeld blir gjort om til en
-nedbetalingsplan, mens spillerkarrierer og statistikk beholdes.
+v22- og eldre lagringer migreres automatisk. Førstesesonglagringer fra v22 får
+balansereparasjonen én gang. Eldre gjeld blir gjort om til en nedbetalingsplan,
+mens spillerkarrierer og statistikk beholdes.

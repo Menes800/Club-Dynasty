@@ -10,6 +10,8 @@ const LOAN_PRODUCTS = {
     feeRate: 0.03,
     termWeeks: 24,
     minimum: 2000,
+    maximumByLeague: [18000, 30000, 50000, 85000, 130000],
+    allowsTopUp: true,
   },
   operating: {
     id: "operating",
@@ -20,6 +22,7 @@ const LOAN_PRODUCTS = {
     feeRate: 0.02,
     termWeeks: 48,
     minimum: 5000,
+    maximumByLeague: [25000, 55000, 110000, 220000, 420000],
   },
   emergency: {
     id: "emergency",
@@ -30,6 +33,7 @@ const LOAN_PRODUCTS = {
     feeRate: 0.08,
     termWeeks: 18,
     minimum: 1000,
+    maximumByLeague: [18000, 28000, 50000, 85000, 140000],
   },
 };
 
@@ -77,7 +81,10 @@ function normalizeLoan(loan, index = 0) {
           calculateLoanPayment(balance, annualRate, weeksRemaining),
       ),
     ),
-    startedSeason: Math.max(1, Math.round(Number(loan?.startedSeason ?? 1) || 1)),
+    startedSeason: Math.max(
+      1,
+      Math.round(Number(loan?.startedSeason ?? 1) || 1),
+    ),
     startedWeek: Math.max(1, Math.round(Number(loan?.startedWeek ?? 1) || 1)),
   };
 }
@@ -213,34 +220,78 @@ function desiredLoanAmount(productId, game, finance, capacity) {
   );
 }
 
-function quoteProduct(productId, game, finance, capacity) {
+function quoteProduct(productId, game, finance, capacity, requestedAmount) {
   const product = LOAN_PRODUCTS[productId];
-  const hasProduct = capacity.loans.some(
+  const activeProductLoan = capacity.loans.find(
     (loan) => loan.productId === productId && loan.balance > 0,
   );
-  const rawAmount = Math.min(
-    desiredLoanAmount(productId, game, finance, capacity),
-    capacity.available / (1 + product.feeRate),
+  const hasProduct = Boolean(activeProductLoan);
+  const leagueIndex = clamp(Math.round(Number(game?.leagueIndex) || 0), 0, 4);
+  const productLimit = product.maximumByLeague[leagueIndex];
+  const productDebtRemaining = Math.max(
+    0,
+    productLimit -
+      (product.allowsTopUp ? (activeProductLoan?.balance ?? 0) : 0),
   );
-  const amount = Math.max(0, Math.floor(rawAmount / 500) * 500);
+  const maximumAmount = Math.max(
+    0,
+    Math.floor(
+      Math.min(capacity.available, productDebtRemaining) /
+        (1 + product.feeRate) /
+        500,
+    ) * 500,
+  );
+  const recommendedAmount = Math.max(
+    0,
+    Math.floor(
+      Math.min(
+        desiredLoanAmount(productId, game, finance, capacity),
+        maximumAmount,
+      ) / 500,
+    ) * 500,
+  );
+  const selectedAmount = Number(requestedAmount);
+  const amount = Number.isFinite(selectedAmount)
+    ? clamp(Math.floor(selectedAmount / 500) * 500, 0, maximumAmount)
+    : recommendedAmount;
   const fee = Math.round(amount * product.feeRate);
   const balance = amount + fee;
+  const isTopUp = Boolean(product.allowsTopUp && activeProductLoan);
+  const resultingProductBalance =
+    (isTopUp ? activeProductLoan.balance : 0) + balance;
+  const resultingTermWeeks = isTopUp
+    ? Math.max(activeProductLoan.weeksRemaining, product.termWeeks)
+    : product.termWeeks;
   const weeklyPayment = calculateLoanPayment(
-    balance,
+    resultingProductBalance,
     product.annualRate,
-    product.termWeeks,
+    resultingTermWeeks,
+  );
+  const totalWeeklyPaymentAfter = Math.max(
+    0,
+    capacity.weeklyPayment -
+      (isTopUp ? activeProductLoan.weeklyPayment : 0) +
+      weeklyPayment,
   );
   const cashThreshold = Math.max(5000, (Number(finance.expenses) || 0) * 2);
+  const firstSeasonAccess =
+    Number(game?.season ?? 1) <= 1 && Number(game?.leagueIndex ?? 0) === 0;
   let reason = "";
-  if (hasProduct) reason = `Du har allerede aktiv ${product.label.toLowerCase()}.`;
+  if (hasProduct && !product.allowsTopUp)
+    reason = `Du har allerede aktiv ${product.label.toLowerCase()}.`;
   else if (capacity.available < product.minimum)
     reason = "Klubben har brukt hele lånerammen.";
+  else if (maximumAmount < product.minimum)
+    reason = isTopUp
+      ? "Kassekreditten er fullt utnyttet innenfor produkt- eller lånerammen."
+      : `Det er mindre enn minste lånebeløp ${product.minimum} igjen av rammen.`;
   else if (amount < product.minimum)
     reason = `Minste lånebeløp er ${product.minimum}.`;
   else if (
     productId === "operating" &&
     capacity.operatingProfit <= 0 &&
-    capacity.creditScore < 62
+    capacity.creditScore < 62 &&
+    !firstSeasonAccess
   )
     reason =
       "Driftslånet krever positivt ukesresultat eller kredittscore på minst 62.";
@@ -257,39 +308,67 @@ function quoteProduct(productId, game, finance, capacity) {
     fee,
     balance,
     weeklyPayment,
+    totalWeeklyPaymentAfter,
+    paymentIncrease: Math.max(
+      0,
+      weeklyPayment - (isTopUp ? activeProductLoan.weeklyPayment : 0),
+    ),
+    productLimit,
+    minimumAmount: product.minimum,
+    recommendedAmount,
+    maximumAmount,
+    amountChoices: [
+      ...new Set([product.minimum, recommendedAmount, maximumAmount]),
+    ].filter((choice) => choice >= product.minimum && choice <= maximumAmount),
+    isTopUp,
+    actionLabel: isTopUp
+      ? "Øk kassekreditten"
+      : `Ta ${product.label.toLowerCase()}`,
     remainingAfter: Math.max(0, capacity.available - balance),
     eligible,
     reason,
   };
 }
 
-export function getLoanDashboard(game, finance = {}) {
+export function getLoanDashboard(game, finance = {}, requestedAmounts = {}) {
   const capacity = calculateBorrowingCapacity(game, finance);
   const products = ["credit", "operating", "emergency"].map((id) =>
-    quoteProduct(id, game, finance, capacity),
+    quoteProduct(id, game, finance, capacity, requestedAmounts[id]),
   );
   return { ...capacity, products };
 }
 
 export function addLoanFromQuote(game, quote, id) {
   if (!quote?.eligible || quote.amount <= 0) {
-    return { ok: false, reason: quote?.reason || "Lånet er ikke tilgjengelig." };
+    return {
+      ok: false,
+      reason: quote?.reason || "Lånet er ikke tilgjengelig.",
+    };
   }
   const snapshot = getDebtSnapshot(game);
+  const existingLoan = quote.isTopUp
+    ? snapshot.loans.find((item) => item.productId === quote.id)
+    : undefined;
   const loan = normalizeLoan({
-    id: id ?? `${quote.id}-${Date.now()}`,
+    id: existingLoan?.id ?? id ?? `${quote.id}-${Date.now()}`,
     productId: quote.id,
     label: quote.label,
-    originalPrincipal: quote.balance,
-    balance: quote.balance,
+    originalPrincipal: (existingLoan?.originalPrincipal ?? 0) + quote.balance,
+    balance: (existingLoan?.balance ?? 0) + quote.balance,
     annualRate: quote.annualRate,
-    termWeeks: quote.termWeeks,
-    weeksRemaining: quote.termWeeks,
+    termWeeks: quote.isTopUp
+      ? Math.max(existingLoan?.termWeeks ?? 0, quote.termWeeks)
+      : quote.termWeeks,
+    weeksRemaining: quote.isTopUp
+      ? Math.max(existingLoan?.weeksRemaining ?? 0, quote.termWeeks)
+      : quote.termWeeks,
     weeklyPayment: quote.weeklyPayment,
-    startedSeason: game?.season ?? 1,
-    startedWeek: game?.week ?? 1,
+    startedSeason: existingLoan?.startedSeason ?? game?.season ?? 1,
+    startedWeek: existingLoan?.startedWeek ?? game?.week ?? 1,
   });
-  const loans = [...snapshot.loans, loan];
+  const loans = existingLoan
+    ? snapshot.loans.map((item) => (item.id === existingLoan.id ? loan : item))
+    : [...snapshot.loans, loan];
   return {
     ok: true,
     loan,

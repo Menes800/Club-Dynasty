@@ -5,7 +5,7 @@ const DEAL_SPECS = {
     id: "none",
     name: "Ingen fast TV-avtale",
     format: "Lokalradio",
-    fixedFee: 180,
+    fixedFee: 260,
     cpm: 4,
     audience: 1200,
     minReputation: 0,
@@ -103,7 +103,7 @@ export function calculateMediaPayout(game, opponent, fixture, won = false) {
   const fixedFee = Math.round(coverage.fixedFee * (playoff ? 1.35 : 1));
   const cpmRevenue = Math.round((audience / 1000) * coverage.cpm);
   const leagueShare = Math.round(
-    [850, 1800, 4000, 8500, 16000][leagueIndex] * (playoff ? 1.5 : 1),
+    [1400, 2300, 4700, 9200, 17000][leagueIndex] * (playoff ? 1.5 : 1),
   );
   const resultBonus = won
     ? Math.round((90 + leagueIndex * 120) * (rival || playoff ? 1.5 : 1))
