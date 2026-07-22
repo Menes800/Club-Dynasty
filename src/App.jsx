@@ -18131,7 +18131,7 @@ function Ao({
             a("section", {
               className: "cash-forecast-v22",
               children: [
-                a("div", {
+                t("div", {
                   className: "section-heading",
                   children: a("div", {
                     children: [
@@ -18971,7 +18971,7 @@ function Ao({
                           }),
                         ],
                       }),
-                      a("small", {
+                      t("small", {
                         className: P.eligible ? "loan-preview-good" : "loan-preview-lock",
                         children: P.eligible
                           ? `Etter lånet: ${h(debtSnapshot.weeklyPayment + P.weeklyPayment)}/uke i gjeldstrekk og ${h(P.remainingAfter)} ledig ramme.`
@@ -18994,7 +18994,7 @@ function Ao({
             a("section", {
               className: "active-loans-v22",
               children: [
-                a("div", {
+                t("div", {
                   className: "section-heading",
                   children: a("div", {
                     children: [
@@ -19287,7 +19287,7 @@ function Ao({
                         }),
                       ],
                     }),
-                    a("strong", {
+                    t("strong", {
                       children: h(latestMedia?.total ?? nextMedia.revenue),
                     }),
                   ],
