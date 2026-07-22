@@ -1,19 +1,16 @@
 {
-  "name": "club-dynasty-v20-bootstrap",
+  "name": "club-dynasty-v20",
   "version": "20.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "postinstall": "node scripts/prepare-v20.mjs",
-    "dev": "node scripts/prepare-v20.mjs && vite --host 0.0.0.0",
-    "build": "node scripts/prepare-v20.mjs && tsc && vite build",
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc && vite build",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
     "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "tar-stream": "3.1.7",
-    "xz-decompress": "0.2.3"
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
     "@types/react": "18.3.18",
