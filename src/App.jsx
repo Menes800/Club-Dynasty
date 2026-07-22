@@ -9150,7 +9150,10 @@ function no() {
                   t(fe, {
                     label: Tt(Ue, "Sesong", "Season"),
                     value: `${e.wins}-${e.losses}`,
-                    detail: `${$e}. plass \xB7 uke ${e.week}`,
+                    detail:
+                      e.wins + e.losses === 0
+                        ? `Ikke rangert \xB7 uke ${e.week}`
+                        : `${$e}. plass \xB7 uke ${e.week}`,
                   }),
                   t(fe, {
                     label: Tt(Ue, "Ukesresultat", "Weekly result"),
@@ -13307,7 +13310,7 @@ function Mo({ game: e, speed: s, setSpeed: n }) {
           t("div", {
             className: "speed-control",
             children: [0, 1, 2, 4].map((d) =>
-              a(
+              t(
                 "button",
                 {
                   className: s === d ? "active" : "",
@@ -13717,7 +13720,7 @@ function Co({ report: e, onContinue: s }) {
         a("section", {
           className: "match-player-boxscore",
           children: [
-            a("div", {
+            t("div", {
               className: "section-heading",
               children: a("div", {
                 children: [
@@ -13743,7 +13746,7 @@ function Co({ report: e, onContinue: s }) {
                           t("small", { children: N(w) }),
                         ],
                       }),
-                      a("span", { children: v === 0 ? "MVP" : w.rating }),
+                      t("span", { children: v === 0 ? "MVP" : w.rating }),
                     ],
                   },
                   w.playerId,
@@ -16287,7 +16290,7 @@ function Ks({ game: e, standings: s }) {
             }),
           ],
         }),
-        a("span", { children: "INGEN SEED ENN\xC5" }),
+        t("span", { children: "INGEN SEED ENN\xC5" }),
       ],
     });
   const n = e.playoffBracket ?? As(e),
@@ -16606,7 +16609,7 @@ function jo({ game: e, standings: s }) {
                   children: [
                     a("header", {
                       children: [
-                        a("span", { children: selectedTeam.logo }),
+                        t("span", { children: selectedTeam.logo }),
                         a("div", {
                           children: [
                             a("h4", {
@@ -16658,7 +16661,7 @@ function jo({ game: e, standings: s }) {
         a("section", {
           className: "league-news-feed",
           children: [
-            a("div", {
+            t("div", {
               className: "section-heading",
               children: a("div", {
                 children: [
@@ -16688,7 +16691,7 @@ function jo({ game: e, standings: s }) {
                           t("p", { children: u.body }),
                         ],
                       }),
-                      a("small", {
+                      t("small", {
                         children: `S${u.season} \xB7 U${u.week || "OFF"}`,
                       }),
                     ],
@@ -19038,7 +19041,7 @@ function Lo({ game: e }) {
       a("section", {
         className: "history-player-legacy",
         children: [
-          a("div", {
+          t("div", {
             className: "section-heading",
             children: a("div", {
               children: [
