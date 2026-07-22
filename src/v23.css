@@ -1,0 +1,367 @@
+/* Club Dynasty v23 – Economy, Funding & UI */
+
+@media (min-width: 980px) {
+  .pc-app-shell {
+    grid-template-columns: 292px minmax(0, 1fr) !important;
+  }
+
+  .desktop-sidebar {
+    width: 292px !important;
+    min-width: 292px !important;
+    flex-basis: 292px !important;
+  }
+
+  .pc-app-shell.sidebar-collapsed {
+    grid-template-columns: 82px minmax(0, 1fr) !important;
+  }
+
+  .pc-app-shell.sidebar-collapsed .desktop-sidebar {
+    width: 82px !important;
+    min-width: 82px !important;
+    flex-basis: 82px !important;
+  }
+}
+
+.sidebar-nav button {
+  min-height: 44px;
+}
+
+.sidebar-nav button.active {
+  color: #fff !important;
+  border-color: color-mix(in srgb, var(--blue) 86%, #fff 14%) !important;
+  background: linear-gradient(135deg, var(--blue), var(--blue-soft)) !important;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--blue) 24%, transparent) !important;
+}
+
+.sidebar-nav button.active b,
+.sidebar-nav button.active span,
+.sidebar-nav button.active svg,
+.sidebar-nav button.active i {
+  color: #fff !important;
+  stroke: currentColor !important;
+}
+
+.sidebar-nav button kbd {
+  display: none !important;
+}
+
+.finance-subnav #v23-municipal-tab.active {
+  color: #fff !important;
+  border-color: var(--blue) !important;
+  background: var(--blue) !important;
+  box-shadow: none !important;
+}
+
+[data-v23-hidden="true"] {
+  display: none !important;
+}
+
+.v23-start-capital h3 {
+  margin: 4px 0 0;
+}
+
+.v23-capital-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.v23-capital-grid button {
+  position: relative;
+  display: grid;
+  gap: 7px;
+  min-height: 132px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  color: var(--text);
+  background: var(--panel);
+  cursor: pointer;
+  text-align: left;
+  transition: 0.16s ease;
+}
+
+.v23-capital-grid button:hover,
+.v23-capital-grid button.active {
+  border-color: var(--blue);
+  transform: translateY(-2px);
+}
+
+.v23-capital-grid button.active {
+  background: color-mix(in srgb, var(--blue) 8%, var(--panel));
+  box-shadow: inset 0 -3px 0 var(--blue);
+}
+
+.v23-capital-grid button > span {
+  width: max-content;
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--blue);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.v23-capital-grid strong {
+  font-size: 1.45rem;
+}
+
+.v23-capital-grid small,
+.v23-help {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.v23-help {
+  margin: 12px 0 0;
+  font-size: 0.76rem;
+}
+
+#v23-municipal-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.v23-municipal-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--blue) 28%, var(--line));
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 90% 0%, color-mix(in srgb, var(--blue) 16%, transparent), transparent 42%),
+    var(--panel);
+}
+
+.v23-municipal-hero h2 {
+  margin-bottom: 7px;
+}
+
+.v23-municipal-hero p:not(.eyebrow) {
+  max-width: 720px;
+  margin-bottom: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.v23-municipal-summary {
+  display: grid;
+  min-width: 140px;
+  padding: 15px;
+  border-radius: 17px;
+  color: #fff;
+  background: var(--blue);
+  text-align: center;
+}
+
+.v23-municipal-summary span,
+.v23-municipal-summary small {
+  opacity: 0.82;
+}
+
+.v23-municipal-summary strong {
+  margin: 4px 0;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.v23-funding-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.v23-funding-form,
+.v23-funding-side > section {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--panel);
+}
+
+.v23-funding-form {
+  display: grid;
+  gap: 13px;
+}
+
+.v23-funding-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.v23-funding-form select,
+.v23-funding-form input,
+.v23-funding-form textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--text);
+  background: var(--panel-soft);
+}
+
+.v23-funding-form textarea {
+  resize: vertical;
+}
+
+.v23-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.v23-application-preview {
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--blue) 24%, var(--line));
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--blue) 5%, var(--panel));
+}
+
+.v23-application-preview small {
+  color: var(--muted);
+}
+
+.v23-primary,
+.v23-application-card button {
+  min-height: 42px;
+  padding: 10px 13px;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  background: var(--blue);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.v23-funding-side {
+  display: grid;
+  gap: 14px;
+}
+
+.v23-application-list {
+  display: grid;
+  gap: 9px;
+}
+
+.v23-application-card,
+.v23-credit-card {
+  display: grid;
+  gap: 6px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel-soft);
+}
+
+.v23-application-card > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.v23-application-card span {
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--panel);
+  font-size: 0.61rem;
+  font-weight: 900;
+}
+
+.v23-application-card p {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.v23-application-card small,
+.v23-credit-card small,
+.v23-credit-card span,
+.v23-empty {
+  color: var(--muted);
+}
+
+.v23-application-card.status-approved,
+.v23-application-card.status-partial {
+  border-color: color-mix(in srgb, var(--green) 35%, var(--line));
+}
+
+.v23-application-card.status-rejected {
+  border-color: color-mix(in srgb, var(--red) 34%, var(--line));
+}
+
+.v23-application-card.status-documentation {
+  border-color: color-mix(in srgb, var(--orange) 38%, var(--line));
+}
+
+.v23-credit-card strong,
+.v23-credit-card span,
+.v23-credit-card small {
+  display: block;
+}
+
+.v23-empty {
+  margin: 0;
+  padding: 18px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 14px;
+  text-align: center;
+}
+
+.v23-toast {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 99999;
+  max-width: min(420px, calc(100vw - 44px));
+  padding: 13px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: #fff;
+  background: #0f766e;
+  box-shadow: 0 18px 50px rgba(2, 6, 23, 0.28);
+  font-weight: 800;
+}
+
+.v23-toast.warning {
+  background: #b45309;
+}
+
+.v23-toast.bad {
+  background: #b91c1c;
+}
+
+@media (max-width: 900px) {
+  .v23-capital-grid,
+  .v23-funding-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .v23-municipal-hero {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .v23-municipal-summary {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .v23-capital-grid,
+  .v23-form-row {
+    grid-template-columns: 1fr;
+  }
+}

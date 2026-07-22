@@ -1,5 +1,20 @@
 # Changelog
 
+## v23.0.0 – Economy, Municipal Funding & UI
+
+- Valgbar startkapital: 75 000, 150 000 eller 250 000. Standard er 150 000.
+- Førstesesonglagringer som startet med 15 000 repareres én gang.
+- Ny kommunal støttefane på økonomisiden.
+- Etableringstilskudd, anleggs- og aktivitetstilskudd og kommunalt lån.
+- Søknader vurderes etter klubbverdi, gjeld, omdømme, styretillit, ungdomsarbeid, egenandel og realisme.
+- Behandlingstid på 2–6 spilluker med godkjent, delvis godkjent, dokumentasjonskrav eller avslag.
+- Anleggstilsagn utbetales bare når et godkjent prosjekt faktisk startes.
+- Kommunalt lån på 50 000–200 000 med 6 % rente og 72 ukers løpetid.
+- Maks én søknad per ordning per sesong, ventetid etter avslag og etableringstilskudd bare én gang.
+- Bredere sidemeny, blå aktiv bakgrunn med hvit tekst og skjulte hurtigtasttall.
+- Utvidet norsk og engelsk konsistens i navigasjon, økonomi, oppsett og kommunal støtte.
+- Startkapital, kommunale søknader og øremerkede tilsagn følger autosave, backup og manuelle lagringsplasser.
+
 ## v22.1.0 – First Season Economy Repair
 
 - Starttroppens lønn er redusert fra omtrent $5,4K til $3,2K per kampuke.

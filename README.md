@@ -1,43 +1,35 @@
-# Club Dynasty v22.1
+# Club Dynasty v23.0
 
 Komplett React/Vite-prosjekt for StackBlitz. Kildekoden ligger direkte i
 repoet, slik at prosjektet starter uten utpakking eller installasjonsskript.
 
-## Hovedinnhold
+## Nytt i v23
 
-- Reparert førstesesongøkonomi: en standardklubb tåler hele sesongen uten tvungent kriselån.
-- Startlønn, grunnsponsor og Rookie League-andel er balansert rundt et lite ukentlig underskudd.
-- Samme beregning brukes i kampoppgjøret og økonomiprognosen.
-- Driftslån er tilgjengelig fra sesong 1, og kassekreditt kan økes innenfor én fasilitet og et absolutt lånetak.
-- Spilleren velger minimum, anbefalt eller maksimalt lånebeløp og ser samlet tvungent trekk før godkjenning.
-- Offseason kan godkjennes med en tydelig tapsadvarsel; en kunstig seksukers buffer låser ikke lenger karrieren.
-- Eksisterende v22-lagringer i første sesong får automatisk lønns-, sponsor- og likviditetsreparasjon.
-- Ny finansieringsside med samlet lånetak, kredittscore, tilgjengelig ramme og tydelige lånevilkår.
-- Kassekreditt fra første sesong, ordinært driftslån og et dyrt nødlån ved reell krise.
-- Automatisk ukentlig betaling av renter og avdrag, ekstra innbetaling og kontrollert gjeldsrestrukturering.
-- Ingen stabling av samme lånetype, og stadiongjeld teller med i klubbens samlede låneramme.
-- Lokalradio, enkeltkamper på TV og medieavtaler betaler fast sats pluss CPM basert på faktisk publikum.
-- Fire ukers kontantprognose og tydelig skille mellom kontantbeholdning, driftsresultat og gjeldsbetaling.
-- Bonusfrie kontraktsfornyelser og en styresanksjonert siste utvei hindrer økonomisk offseason-lås.
-- Ekte kampdag med fire quarters, pause, 1x/2x/4x hastighet og valg ved halftime og i sluttminuttene.
-- Navngitte scoringer, turnovers og forsvarsspill, lagstatistikk og komplett kampboks.
-- Sesong- og karrierestatistikk for spillerne, statistikkledere, priser, rekorder og klubblegender.
-- Levende ligasenter med klikkbare motstandere, AI-overganger, draftnyheter og tydeligere rivaloppgjør.
-- Hurtigsim og øyeblikkelig simulering er fortsatt tilgjengelig ved siden av den nye direktekampen.
-- Før-sesongens sluttspillvisning viser ikke lenger en falsk seed.
-- Offseason viser nå supporterendringen for hele sesongen.
-- Tydelig sluttspillhub med topp 4, topp 6 og topp 8 etter liganivå.
-- Auto-manager stopper alltid før sluttspill og ignorerer rutinemøter i styret.
-- Sponsorvedlikehold: Av, Vedlikehold eller Optimaliser.
-- Sponsorfornyelser kan behandles direkte i offseason.
-- Lengre sponsoravtaler målt i sesonger og faste opplåsingskrav.
-- Karrieretempo: rask, standard eller lang.
-- Klubblisenskrav før opprykk.
-- Ny kamprapport med resultat og konsekvens først.
-- Ny innstillingsside med egne faner og hovedknapp for mute.
-- Fame oppdateres og sesonghistorikken lagrer sluttspill, priser og utvikling.
-- Økonomisk sen-spillvekst komprimeres.
-- Tabell før første kamp viser ingen falsk rangering.
+- Valgbar startkapital: 75 000, 150 000 eller 250 000. Standard er 150 000.
+- Førstesesonglagringer som startet med 15 000 får en kontrollert engangsreparasjon.
+- Ny fane for kommunal støtte under økonomi.
+- Kommunalt etableringstilskudd på 25 000–75 000 for små klubber.
+- Anleggs- og aktivitetstilskudd med 20–50 % kommunal dekning og krav til egenandel.
+- Anleggsmidler holdes utenfor fri kontantbeholdning og refunderes først når et godkjent prosjekt startes.
+- Kommunalt lån på 50 000–200 000 med 6 % rente, 72 ukers løpetid og tvungne ukentlige avdrag.
+- Søknader bruker klubbverdi, gjeld, omdømme, styretillit, ungdomsarbeid og egenandel.
+- Svar kommer etter 2–6 spilluker og kan bli godkjent, delvis godkjent, avslått eller kreve dokumentasjon.
+- Maks én søknad per støtteordning per sesong, ventetid etter avslag og etableringstilskudd kun én gang.
+- Bredere sidemeny, blå aktiv bakgrunn med hvit tekst og skjulte hurtigtasttall.
+- Utvidet norsk/engelsk konsistens i navigasjon, økonomi, oppsett og støtteordningene.
+- Kommunal støtte, startkapital og tilsagn følger autosave, backup og manuelle lagringsplasser.
+
+## Eksisterende hovedinnhold
+
+- Reparert førstesesongøkonomi med balansert startlønn, grunnsponsor og Rookie League-andel.
+- Dynamisk samlet lånetak basert på inntekter, klubbverdi, omdømme, styretillit og eksisterende gjeld.
+- Kassekreditt, driftslån og nødlån med tydelige vilkår, avdrag og løpetid.
+- Fire ukers kontantprognose med kontantbuffer, sesongprognose og gjeldstrekk.
+- Lokalradio, TV-kamper og medieavtaler med fast betaling pluss CPM.
+- Ekte kampdag med fire quarters, pause, hastighetsvalg og taktiske beslutninger.
+- Spillerstatistikk, priser, rekorder, klubblegender og levende ligasenter.
+- Tydelig sluttspillhub og auto-manager som stopper før postseason.
+- Sponsorvedlikehold, offseason-fornyelser, karrieretempo og klubblisenskrav.
 
 ## Start spillet
 
@@ -58,6 +50,6 @@ npm run build
 npm test
 ```
 
-v22- og eldre lagringer migreres automatisk. Førstesesonglagringer fra v22 får
-balansereparasjonen én gang. Eldre gjeld blir gjort om til en nedbetalingsplan,
-mens spillerkarrierer og statistikk beholdes.
+v22- og eldre lagringer migreres automatisk. v23-laget reparerer startkapitalen
+én gang og lagrer kommunale søknader separat, samtidig som dataene legges inn i
+autosave, backup og manuelle lagringsplasser.
